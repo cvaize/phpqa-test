@@ -4,7 +4,10 @@
   "private": true,
   "scripts": {},
   "dependencies": {
+    "csv-parser": "^3.0.0",
+    "csv-write-stream": "^2.0.0",
     "node-html-parser": "^5.3.3",
+    "node-xlsx": "^0.21.0",
     "pdf-parse": "^1.1.1"
   }
 }
