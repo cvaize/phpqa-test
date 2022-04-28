@@ -37,20 +37,26 @@ task(){
     rm -rf ./dataset/code/${2}
 }
 
-while IFS=, read -r field1 url field3
+while IFS=, read -r field1 url field3 field4 field5 size field7
 do
   if [[ $url == *"http"* ]]; then
 
     file_path=$(echo ${url} | cut -d/ -f2- | cut -d/ -f2- | cut -d/ -f2- | cut -d? -f1)
     git_folder=$(echo ${file_path} | cut -d/ -f1)
-    if [ -f "./dataset/analysis/${file_path}/phpmetrics.html" ]; then
-        echo ""
-        echo "Analises exists ./dataset/analysis/${file_path}/phpmetrics.html"
-        echo ""
+    if [ "$size" -le "200000" ]; then
+        if [ -f "./dataset/analysis/${file_path}/phpmetrics.html" ]; then
+            echo ""
+            echo "Analises exists ./dataset/analysis/${file_path}/phpmetrics.html"
+            echo ""
+        else
+            N=4
+            open_sem $N
+            run_with_lock task $file_path $git_folder
+        fi
     else
-        N=4
-        open_sem $N
-        run_with_lock task $file_path $git_folder
+        echo ""
+        echo "Invalid size ${size} > 200000 - ${file_path}"
+        echo ""
     fi
 
   fi
