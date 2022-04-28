@@ -1,7 +1,7 @@
 rm -rf code && \
 rm -rf analysis && \
 mkdir -p analysis && \
-git clone https://github.com/kaex/igFame code && \
+git clone $GIT_URL code && \
 find ./code -type d -iname "*test*" -prune -exec rm -rf {} \; && \
 find ./code -iname "*test*.*" -exec rm -rf {} \; && \
 docker run --user $(id -u):$(id -g) --rm -v "$PWD/code":/app -v  "$PWD/analysis":/analysis \
