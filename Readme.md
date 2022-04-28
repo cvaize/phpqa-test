@@ -28,7 +28,7 @@ bash run_with_env_dataset.sh
 ```shell
 docker run --user $(id -u):$(id -g) -it --rm -v "$PWD":/usr/src/app -w /usr/src/app node node clear-dataset-analysis.js
 ```
-#### Записать баллы из аналитики в файд csv датасет `60k_php_dataset_for_labelling_result.csv`.
+#### Записать баллы из аналитики в файл csv датасет `60k_php_dataset_for_labelling.csv`.
 ```shell
 docker run --user $(id -u):$(id -g) -it --rm -v "$PWD":/usr/src/app -w /usr/src/app node node write-analysis-to-dataset.js
 ```

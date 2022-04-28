@@ -14,6 +14,8 @@ const average = function (nums) {
 //     'Reducing bug&#039;s probability': 'Снижение вероятности ошибки',
 // }
 
+const sourceFilename = './dataset/60k_php_dataset_for_labelling.csv';
+const resultFilename = './dataset/60k_php_dataset_for_labelling_result.csv';
 let scoresDefault = {
     'Maintainability': '',
     'Accessibility for new developers': '',
@@ -76,7 +78,7 @@ const fillScore = function (rowObject) {
 
 let csvRows = [];
 
-fs.createReadStream('./dataset/60k_php_dataset_for_labelling.csv')
+fs.createReadStream(sourceFilename)
     .pipe(csv())
     .on('data', (data) => csvRows.push(data))
     .on('end', () => {
@@ -87,7 +89,6 @@ fs.createReadStream('./dataset/60k_php_dataset_for_labelling.csv')
         // ]
 
         const writer = csvWriter()
-        const resultFilename = './dataset/60k_php_dataset_for_labelling_result.csv';
         if (fs.existsSync(resultFilename)) {
             fs.unlinkSync(resultFilename);
         }
@@ -98,4 +99,11 @@ fs.createReadStream('./dataset/60k_php_dataset_for_labelling.csv')
             writer.write(csvRow)
         }
         writer.end()
+
+        setTimeout(function (){
+            if (fs.existsSync(sourceFilename) && fs.existsSync(resultFilename)) {
+                fs.unlinkSync(sourceFilename);
+                fs.renameSync(resultFilename, sourceFilename);
+            }
+        }, 100)
     });
