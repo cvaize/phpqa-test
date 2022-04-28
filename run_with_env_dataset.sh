@@ -19,7 +19,7 @@ do
         find ./code -type d -iname "*test*" -prune -exec rm -rf {} \;
         find ./code -iname "*test*.*" -exec rm -rf {} \;
         docker run --user $(id -u):$(id -g) --rm -v "$PWD/code":/app -v  "$PWD/dataset/analysis/${file_path}":/analysis \
-        zdenekdrahos/phpqa:v1.25.0-php7.2 phpqa --tools phpmetrics,phpmd,pdepend,phpcs,phpcpd,phploc \
+        zdenekdrahos/phpqa:v1.25.0-php7.2 phpqa --tools phpmetrics \
         --ignoredDirs build,vendor,tests,lib,uploads,phpMyAdmin,phpmyadmin,library \
         --analyzedDirs /app --buildDir /analysis
     fi
