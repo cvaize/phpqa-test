@@ -37,7 +37,6 @@ docker run --user $(id -u):$(id -g) -it --rm -v "$PWD":/usr/src/app -w /usr/src/
 ```
 
 
-
 ### Другие команды
 #### Запуск статичного скрипта
 Просто меняйте репозиторий в скрипте и выполнаяйте команду:
@@ -49,4 +48,7 @@ bash run.sh
 ```shell
 export GIT_URL=https://github.com/sabitertan/webpos && bash run_with_env.sh
 ```
-
+#### Запустить в фоне на сервере
+```shell
+nohup /bin/bash /root/myapp/run_with_env_dataset_semaphore.sh </dev/null &>/dev/null &
+```

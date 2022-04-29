@@ -27,14 +27,14 @@ run_with_lock(){
 task(){
     mkdir -p ./dataset/analysis/${1}
     rm -rf ./dataset/code/${1}
-    git clone "$url" ./dataset/code/${1}
+    git clone "$url" ./dataset/code/${1} </dev/null &>/dev/null
     find ./dataset/code/${1} -type d -iname "*test*" -prune -exec rm -rf {} \;
     find ./dataset/code/${1} -iname "*test*.*" -exec rm -rf {} \;
     docker run --user $(id -u):$(id -g) --rm -v "$PWD/dataset/code/${1}":/app -v  "$PWD/dataset/analysis/${1}":/analysis \
     zdenekdrahos/phpqa:v1.25.0-php7.2 phpqa --tools phpmetrics \
     --ignoredDirs build,vendor,tests,lib,uploads,phpMyAdmin,phpmyadmin,library \
-    --analyzedDirs /app --buildDir /analysis
-    rm -rf ./dataset/code/${2}
+    --analyzedDirs /app --buildDir /analysis </dev/null &>/dev/null
+    rm -rf ./dataset/code/${1}
 }
 
 while IFS=, read -r field1 url field3 field4 field5 size field7
@@ -45,18 +45,14 @@ do
     git_folder=$(echo ${file_path} | cut -d/ -f1)
     if [ "$size" -le "200000" ]; then
         if [ -f "./dataset/analysis/${file_path}/phpmetrics.html" ]; then
-            echo ""
             echo "Analises exists ./dataset/analysis/${file_path}/phpmetrics.html"
-            echo ""
         else
             N=4
             open_sem $N
             run_with_lock task $file_path $git_folder
         fi
     else
-        echo ""
         echo "Invalid size ${size} > 200000 - ${file_path}"
-        echo ""
     fi
 
   fi
