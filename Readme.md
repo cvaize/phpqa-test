@@ -52,3 +52,7 @@ export GIT_URL=https://github.com/sabitertan/webpos && bash run_with_env.sh
 ```shell
 nohup /bin/bash /root/myapp/run_dataset_semaphore.sh </dev/null &>/dev/null &
 ```
+#### Посчитать результат оценки датасета
+```shell
+docker run --user $(id -u):$(id -g) -it --rm -v "$PWD":/usr/src/app -w /usr/src/app node node count-dataset-analysis.js
+```
