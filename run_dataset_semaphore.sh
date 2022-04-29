@@ -43,7 +43,7 @@ task(){
     rm -rf ./dataset/code/${1}
 
     if [ -d "./dataset/analysis/${1}-clone" ]; then
-      cp -rf ./dataset/analysis/${1}-clone/* ./dataset/analysis/${file_path}
+      cp -rf ./dataset/analysis/${1}-clone/* ./dataset/analysis/${1}
       rm -rf ./dataset/analysis/${1}-clone
     fi
 }
@@ -93,7 +93,7 @@ do
         need_tools="${need_tools}phpmd"
       fi
       if [ ! -z "$need_tools" ]; then
-        N=4
+        N=5
         open_sem $N
         run_with_lock task $file_path $need_tools
       fi
