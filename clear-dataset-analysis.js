@@ -34,7 +34,7 @@ const clean = function (rowObject) {
 
 let csvRows = [];
 
-fs.createReadStream('./dataset/60k_php_dataset_for_labelling.csv')
+fs.createReadStream('./dataset/60k_php_dataset_metrics.csv')
     .pipe(csv())
     .on('data', (data) => csvRows.push(data))
     .on('end', () => {

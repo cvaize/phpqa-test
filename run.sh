@@ -4,8 +4,9 @@ mkdir -p analysis && \
 git clone https://github.com/cvaize/TestWork-834405 code && \
 find ./code -type d -iname "*test*" -prune -exec rm -rf {} \; && \
 find ./code -iname "*test*.*" -exec rm -rf {} \; && \
-docker run --user $(id -u):$(id -g) --rm -v "$PWD/code":/app -v  "$PWD/analysis":/analysis \
+docker run --user $(id -u):$(id -g) --rm -v "$PWD/code":/app -v "$PWD/analysis":/analysis \
+-v "$PWD/.phpqa.yml":/config-phpqa/.phpqa.yml \
 zdenekdrahos/phpqa:v1.25.0-php7.2 phpqa --tools phpmetrics,phpmd,pdepend,phpcs,phpcpd,phploc \
---ignoredDirs build,vendor,tests,lib \
+--ignoredDirs build,vendor,tests,lib,uploads,phpMyAdmin,phpmyadmin,library --config /config-phpqa \
 --analyzedDirs /app --buildDir /analysis/code && \
 docker run --user $(id -u):$(id -g) -it --rm -v "$PWD":/usr/src/app -w /usr/src/app node node app.js

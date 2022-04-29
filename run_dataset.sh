@@ -46,12 +46,33 @@ do
         fi
 
         if [ ! -z "$need_tools" ]; then
-          echo $need_tools;
+          echo "$file_path - $need_tools"
+
+          if [ -d "./dataset/analysis/${file_path}" ]; then
+            cp -rf ./dataset/analysis/${file_path} ./dataset/analysis/${file_path}-clone
+          else
+            mkdir -p ./dataset/analysis/${file_path}
+          fi
+
+          rm -rf code
+          git clone "$url" code
+          find ./code -type d -iname "*test*" -prune -exec rm -rf {} \;
+          find ./code -iname "*test*.*" -exec rm -rf {} \;
+          docker run --user $(id -u):$(id -g) --rm -v "$PWD/code":/app -v  "$PWD/dataset/analysis/${file_path}":/analysis \
+          -v "$PWD/.phpqa.yml":/config-phpqa/.phpqa.yml \
+          zdenekdrahos/phpqa:v1.25.0-php7.2 phpqa --tools $need_tools \
+          --ignoredDirs build,vendor,tests,lib,uploads,phpMyAdmin,phpmyadmin,library --config /config-phpqa \
+          --analyzedDirs /app --buildDir /analysis
+
+          if [ -d "./dataset/analysis/${file_path}-clone" ]; then
+            cp -rf ./dataset/analysis/${file_path}-clone/* ./dataset/analysis/${file_path}
+            rm -rf ./dataset/analysis/${file_path}-clone
+          fi
         fi
 
     else
         echo "Invalid size ${size} > 200000 - ${file_path}"
     fi
-
+    
   fi
 done < dataset/60k_php_dataset_metrics.csv

@@ -14,7 +14,7 @@ const average = function (nums) {
 //     'Reducing bug&#039;s probability': 'Снижение вероятности ошибки',
 // }
 
-const sourceFilename = './dataset/60k_php_dataset_for_labelling.csv';
+const sourceFilename = './dataset/60k_php_dataset_metrics.csv';
 const resultFilename = './dataset/60k_php_dataset_for_labelling_result.csv';
 let scoresDefault = {
     'Maintainability': '',

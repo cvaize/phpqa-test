@@ -11,7 +11,7 @@ docker run --user $(id -u):$(id -g) -it --rm -v "$PWD":/usr/src/app -w /usr/src/
 
 ## Использование
 ### Работа с датасетом
-#### Поместите датасет csv в файл`./dataset/60k_php_dataset_for_labelling.csv`
+#### Поместите датасет csv в файл`./dataset/60k_php_dataset_metrics.csv`
 ```csv
 nameWithOwner,link,createdAt,pushedAt,isFork,diskUsage (kb),D. Orlov score,D. Orlov - Why did I lower the score.,Maintainability,Accessibility for new developers,Simplicity of algorithms,Volume,Reducing bug's probability,Average Total
 iamfiscus/codeigniter-ion-auth-migration,https://github.com/iamfiscus/codeigniter-ion-auth-migration,2011-07-28T14:51:30Z,2018-10-04T08:07:24Z,FALSE,136,7.5,,17.170000000000002,0,14.289999999999999,9.3800000000000008,0,8.1699999999999999
@@ -24,14 +24,14 @@ marcelog/Ci-Php-Phing-Example,https://github.com/marcelog/Ci-Php-Phing-Example,2
 ```
 #### Генерация аналитики
 ```shell
-bash run_with_env_dataset.sh
+bash run_dataset.sh
 ```
 Аналитика будет помещаться в директорию `dataset/analysis`.
 #### Очистка файлов аналитики от ошибочных результатов
 ```shell
 docker run --user $(id -u):$(id -g) -it --rm -v "$PWD":/usr/src/app -w /usr/src/app node node clear-dataset-analysis.js
 ```
-#### Записать баллы из аналитики в файл csv датасет `60k_php_dataset_for_labelling.csv`.
+#### Записать баллы из аналитики в файл csv датасет `60k_php_dataset_metrics.csv`.
 ```shell
 docker run --user $(id -u):$(id -g) -it --rm -v "$PWD":/usr/src/app -w /usr/src/app node node write-analysis-to-dataset.js
 ```
@@ -50,5 +50,5 @@ export GIT_URL=https://github.com/sabitertan/webpos && bash run_with_env.sh
 ```
 #### Запустить в фоне на сервере
 ```shell
-nohup /bin/bash /root/myapp/run_with_env_dataset_semaphore.sh </dev/null &>/dev/null &
+nohup /bin/bash /root/myapp/run_dataset_semaphore.sh </dev/null &>/dev/null &
 ```
