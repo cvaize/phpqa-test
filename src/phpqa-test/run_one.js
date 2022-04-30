@@ -4,7 +4,7 @@ const average = function (nums) {
     return nums.reduce((a, b) => (a + b)) / nums.length;
 }
 
-let phpmetrics = fs.readFileSync('./analysis/code/phpmetrics.html', 'utf-8');
+let phpmetrics = fs.readFileSync('/analysis/code/phpmetrics.html', 'utf-8');
 let root = HTMLParser.parse(phpmetrics);
 let rows = root.querySelectorAll('#score table tbody tr');
 let scores = [];
