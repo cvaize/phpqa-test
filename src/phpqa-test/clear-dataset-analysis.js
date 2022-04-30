@@ -13,7 +13,6 @@ const removeSource = function (filepath) {
 }
 
 /**
- *
  * @param {string} filepath
  * @param {string} phrase
  * @returns {boolean}

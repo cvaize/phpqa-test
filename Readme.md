@@ -60,3 +60,10 @@ nohup /bin/bash /root/myapp/run_dataset_semaphore.sh </dev/null &>/dev/null &
 ```shell
 docker run --user $(id -u):$(id -g) -it --rm -v "$PWD":/usr/src/app -w /usr/src/app node node count-dataset-analysis.js
 ```
+
+## Запуск команд через nodejs
+
+В этом пункте установите nodejs, желательно 18 версию (чисто чтобы обрабатывало быстрее)
+```shell
+node run_parallel.js "../../dataset/60k_php_dataset_metrics.csv" link 4 phpmetrics,phpmd,pdepend,phpcs,phpcpd,phploc
+```
