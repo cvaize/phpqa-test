@@ -10,7 +10,6 @@ const phraseXml = '<?xml'
  * @returns {Promise<['phpmetrics', 'phpmd', 'pdepend', 'phpcs', 'phpcpd', 'phploc']>}
  */
 async function getExistsResultTools(folder) {
-    return [];
     let existsResultTools = [];
 
     await Promise.allSettled([

@@ -247,10 +247,8 @@ async function foldersPreparation(needRows) {
         let endLog = timeLog(`${i + 1}/${length} Подготовка директорий, проверка отчетов - ${row.link}`)
 
         if (!await checkFileExists(row.analysesUserFolder)) {
-            await Promise.all([
-                fs.promises.mkdir(row.analysesUserFolder),
-                fs.promises.mkdir(row.analysesRepositoryFolder),
-            ])
+            await fs.promises.mkdir(row.analysesUserFolder);
+            await fs.promises.mkdir(row.analysesRepositoryFolder);
         } else if (!await checkFileExists(row.analysesRepositoryFolder)) {
             await fs.promises.mkdir(row.analysesRepositoryFolder);
         }
@@ -288,9 +286,11 @@ async function copyChunkFiles(row, chunkFilename) {
         let analysesRepositoryFolder = row.analysesRepositoryFolder.replace(filename, chunkFilename);
         let analysesCloneRepositoryFolder = row.analysesCloneRepositoryFolder.replace(filename, chunkFilename);
 
-        await copy(row.analysesUserFolder, analysesUserFolder, {overwrite: true});
-        await copy(row.analysesRepositoryFolder, analysesRepositoryFolder, {overwrite: true});
-        await copy(row.analysesCloneRepositoryFolder, analysesCloneRepositoryFolder, {overwrite: true});
+        await Promise.all([
+            checkFileExists(row.analysesUserFolder).then(exists => exists && copy(row.analysesUserFolder, analysesUserFolder, {overwrite: true})),
+            checkFileExists(row.analysesRepositoryFolder).then(exists => exists && copy(row.analysesRepositoryFolder, analysesRepositoryFolder, {overwrite: true})),
+            checkFileExists(row.analysesCloneRepositoryFolder).then(exists => exists && copy(row.analysesCloneRepositoryFolder, analysesCloneRepositoryFolder, {overwrite: true})),
+        ])
 
     } catch (e) {
         console.error(e);
@@ -317,6 +317,7 @@ async function main() {
      * @var {*}[] data
      */
 
+
     endLog = timeLog('Получение данных');
     let sourceData = await getData(filepath);
     endLog();
@@ -341,7 +342,7 @@ async function main() {
             break;
         case 'chunking':
             endLog = timeLog('Разделение на части');
-            let chunks = _.chunk(needRows, chunksCount);
+            let chunks = _.chunk(needRows, Math.round(needRows.length/chunksCount));
             let chunksSources = chunks.map(() => []);
             let promises = [];
 
