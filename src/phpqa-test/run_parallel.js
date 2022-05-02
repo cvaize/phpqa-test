@@ -1,156 +1,114 @@
 const fs = require('fs');
-const csv = require('csv-parser')
-const HTMLParser = require('node-html-parser');
-// const execSync = require('child_process').execSync;
-const exec = require('child_process').exec;
-// const execSync = function (command){
-//     console.log('execSync call: ' + command)
-// }
+const ArgParser = require("argparce");
+const getData = require('../utils/get-data');
+const execShellCommand = require('../utils/exec');
+const getExistsResultTools = require('../utils/get-exists-result-tools');
+const timeLog = require('../utils/time-log');
+const checkFileExists = require('../utils/check-file-exists');
+const {Sema} = require('async-sema');
 
-const phraseXml = '<?xml'
-
-/**
- * Результатом программы считать дирректорию одноименную с файлом csv и результаты аналитики внутри этой директории
- *
- * 0) Получить csv файл и распарсить
- * 1) Достать все записи
- * 2) Запустить обработку
- * 2.1) Во время обработки проверять наличие файлов и обрабатывать только когда в этом есть необходимость.
- * 2.2) Копировать директории с отчетами, если остались старые, в директории -clone, чтобы они не удалялись, так как phpqa очищает директории
- * 2.3) Копировать обратно из директорий -clone и удалять директории -clone
- * 3) Запустить очистку от ошибок и вернуться на шаг 2.
- * 4) Если шаг 2 вернул пустой массив выйти из программы.
- */
-let exampleCommand = 'Команда: node run_parallel.js [filepath] [columnLinkKey] [streams] [tools]`. Пример команды: `node run_parallel.js "../../dataset/60k_php_dataset_metrics.csv" link 4 phpmetrics,phpmd,pdepend,phpcs,phpcpd,phploc`';
 let accessTools = ['phpmetrics', 'phpmd', 'pdepend', 'phpcs', 'phpcpd', 'phploc']
 
-// let nodePath = process.argv[0];
-// let appPath = process.argv[1];
+const params = ArgParser.parse(process.argv.slice(2), {
+    args: [
+        {
+            // Путь к файлу csv
+            type: 'string',
+            name: 'filepath',
+            short: 'f'
+        },
+        {
+            // Заголовок в котором хранится ссылка на github репозиторий
+            type: 'string',
+            name: 'column-link-key',
+            short: 'cl',
+            default: 'link'
+        },
+        {
+            // Заголовок в котором хранится ссылка на github репозиторий
+            type: 'string',
+            name: 'column-size-key',
+            short: 'cs',
+            default: 'diskUsage (kb)'
+        },
+        {
+            // Phpqa tools которые нужно использовать в процессе обработки
+            type: 'string',
+            name: 'tools',
+            short: 't',
+            default: 'phpmetrics,phpmd,pdepend,phpcs,phpcpd,phploc'
+        },
+        {
+            // Количество потоков
+            type: 'uinteger',
+            name: 'streams',
+            short: 's',
+            default: 4
+        },
+        {
+            // Лимит в kb
+            type: 'uinteger',
+            name: 'size-limit',
+            short: 'l',
+            default: 200000
+        }
+    ],
+    maxStrays: 0,
+    stopAtError: true,
+    errorExitCode: true
+});
 
 // 0
-// Путь к файлу csv
-let filepath = process.argv[2];
+let filepath = params.args.filepath;
+let columnLinkKey = params.args['column-link-key'];
+let streams = params.args.streams;
+let tools = params.args.tools;
+let columnSizeKey = params.args['column-size-key'];
+let sizeLimit = params.args['size-limit'];
+
+
+const PWD = process.env.PWD;
 let codeFolder = '';
 let analysesFolder = '';
 let filename = '';
 let fileExtension = '';
-// Заголовок в котором хранится ссылка на github репозиторий
-let columnLinkKey = process.argv[3];
-// Количество потоков
-let streams = process.argv[4];
-// Phpqa tools которые нужно использовать в процессе обработки
-let tools = process.argv[5]; // phpmetrics,phpmd,pdepend,phpcs,phpcpd,phploc
-let columnSizeKey = 'diskUsage (kb)';
-// Лимит в kb
-let sizeLimit = 200000;
-let PWD = process.env.PWD;
 
-// 1
-function getData(filepath) {
-    return new Promise(function (resolve) {
-        let csvRows = [];
 
-        fs.createReadStream(filepath).pipe(csv()).on('data', (data) => csvRows.push(data))
-            .on('end', () => {
-                resolve(csvRows);
-                // [
-                //   { NAME: 'Daffy Duck', AGE: '24' },
-                //   { NAME: 'Bugs Bunny', AGE: '22' }
-                // ]
-            });
-    })
+if (!filepath) {
+    throw new Error('Укажите путь к файлу с csv.');
+}
+if (!fs.readFileSync(filepath)) {
+    throw new Error('По указанному пути файл csv не найден.');
 }
 
-/**
- * Executes a shell command and return it as a Promise.
- * @param cmd {string}
- * @return {Promise<string>}
- */
-function execShellCommand(cmd) {
-    return new Promise((resolve, reject) => {
-        exec(cmd, (error, stdout, stderr) => {
-            if (error) {
-                console.warn(error);
-            }
-            resolve(stdout ? stdout : stderr);
-        });
-    });
+if (!columnLinkKey) {
+    throw new Error('Укажите колонку в которой находятся ссылки.')
+}
+
+streams = Number(streams || 0)
+
+if (!streams || Number.isNaN(streams)) {
+    throw new Error('Укажите количество потоков.')
+}
+
+tools = (tools || '').split(',');
+for (let i = 0; i < tools.length; i++) {
+    let tool = tools[i];
+    if (!accessTools.includes(tool)) {
+        throw new Error('Инструмент ' + tool + ' не предусмотрен.')
+    }
+}
+if (!tools.length) {
+    throw new Error('Укажите phpqa tools.')
 }
 
 
-/**
- * @param {string} filepath
- * @param {string} phrase
- * @returns {boolean}
- */
-const isIncludesContentInSource = function (filepath, phrase) {
-    if (fs.existsSync(filepath)) {
-        /**
-         * @var {string} content
-         */
-        let content = fs.readFileSync(filepath, 'utf-8');
-
-        return !!(content && content.includes(phrase));
-    }
-    return false;
-}
-
-function getExistsResultTools(folder) {
-    let existsResultTools = [];
-
-    try {
-        let phpmetricsHtmlFilepath = `${folder}/phpmetrics.html`;
-        let phpmetricsXmlFilepath = `${folder}/phpmetrics.xml`;
-        if (fs.existsSync(phpmetricsHtmlFilepath) && isIncludesContentInSource(phpmetricsXmlFilepath, phraseXml)) {
-            let phpmetrics = fs.readFileSync(phpmetricsHtmlFilepath, 'utf-8');
-
-            let root = HTMLParser.parse(phpmetrics);
-            let rows = root.querySelectorAll('#score table tbody tr');
-
-            if (rows || rows.length) {
-                existsResultTools.push('phpmetrics');
-            }
-        }
-    } catch (e) {
-    }
-
-    try {
-        if (isIncludesContentInSource(`${folder}/checkstyle.xml`, phraseXml)) {
-            existsResultTools.push('phpcs');
-        }
-    } catch (e) {
-    }
-
-    try {
-        if (isIncludesContentInSource(`${folder}/pdepend-summary.xml`, phraseXml)) {
-            existsResultTools.push('pdepend');
-        }
-    } catch (e) {
-    }
-
-    try {
-        if (isIncludesContentInSource(`${folder}/phpcpd.xml`, phraseXml)) {
-            existsResultTools.push('phpcpd');
-        }
-    } catch (e) {
-    }
-
-    try {
-        if (isIncludesContentInSource(`${folder}/phploc.xml`, phraseXml)) {
-            existsResultTools.push('phploc');
-        }
-    } catch (e) {
-    }
-
-    try {
-        if (isIncludesContentInSource(`${folder}/phpmd.xml`, phraseXml)) {
-            existsResultTools.push('phpmd');
-        }
-    } catch (e) {
-    }
-
-    return existsResultTools;
-}
+filename = filepath.split('.');
+fileExtension = filename.pop();
+filename = filename.join('.');
+codeFolder = filename + '/code';
+analysesFolder = filename + '/analyses';
+const s = new Sema(streams);
 
 // 2
 async function worker(ceil) {
@@ -165,41 +123,40 @@ async function worker(ceil) {
         let repAnalysesFolder = `${analysesFolder}/${repUser}/${repName}`;
         let repCodeFolder = `${codeFolder}/${repUser}/${repName}`;
 
-        if (!fs.existsSync(`${analysesFolder}/${repUser}`)) {
-            fs.mkdirSync(`${analysesFolder}/${repUser}`);
+        if (!await checkFileExists(`${analysesFolder}/${repUser}`)) {
+            await fs.promises.mkdir(`${analysesFolder}/${repUser}`);
 
-            fs.mkdirSync(repAnalysesFolder);
-        } else if (!fs.existsSync(repAnalysesFolder)) {
-            fs.mkdirSync(repAnalysesFolder);
+            await fs.promises.mkdir(repAnalysesFolder);
+        } else if (!await checkFileExists(repAnalysesFolder)) {
+            await fs.promises.mkdir(repAnalysesFolder);
         }
 
-        if (fs.existsSync(`${repAnalysesFolder}-clone`)) {
-            await execShellCommand(`cp -rf ${repAnalysesFolder}-clone ${repAnalysesFolder}`);
-            await execShellCommand(`rm -rf ${repAnalysesFolder}-clone`);
+        if (await checkFileExists(`${repAnalysesFolder}-clone`)) {
+            await execShellCommand(`cp -rf ${repAnalysesFolder}-clone ${repAnalysesFolder} && rm -rf ${repAnalysesFolder}-clone`);
         }
 
         let workTools = [...tools];
-        let existsResultTools = getExistsResultTools(repAnalysesFolder);
+        let existsResultTools = await getExistsResultTools(repAnalysesFolder);
 
         workTools = workTools.filter(tool => !existsResultTools.includes(tool))
 
         if (workTools.length) {
 
-            if (!fs.existsSync(`${codeFolder}/${repUser}`)) {
-                fs.mkdirSync(`${codeFolder}/${repUser}`);
+            if (!await checkFileExists(`${codeFolder}/${repUser}`)) {
+                await fs.promises.mkdir(`${codeFolder}/${repUser}`);
             }
 
-            if (fs.existsSync(`${repCodeFolder}`)) {
+            if (await checkFileExists(`${repCodeFolder}`)) {
                 await execShellCommand(`rm -rf ${repCodeFolder}`);
             }
 
-            if (fs.existsSync(`${repAnalysesFolder}`)) {
+            if (await checkFileExists(`${repAnalysesFolder}`)) {
                 await execShellCommand(`cp -rf ${repAnalysesFolder} ${repAnalysesFolder}-clone`);
             }
 
             await execShellCommand(`git clone ${githubLink} ${repCodeFolder}`);
-            await execShellCommand(`find ${repCodeFolder} -type d -iname "*test*" -prune -exec rm -rf {} \\;`);
-            await execShellCommand(`find ${repCodeFolder} -iname "*test*.*" -exec rm -rf {} \\;`);
+            // await execShellCommand(`find ${repCodeFolder} -type d -iname "*test*" -prune -exec rm -rf {} \\;`);
+            // await execShellCommand(`find ${repCodeFolder} -iname "*test*.*" -exec rm -rf {} \\;`);
             await execShellCommand(`docker run --user $(id -u):$(id -g) --rm -v "${PWD}/${repCodeFolder}":/app -v  "${PWD}/${repAnalysesFolder}":/analysis \\
     -v "${PWD}/.phpqa.yml":/config-phpqa/.phpqa.yml \\
     zdenekdrahos/phpqa:v1.25.0-php7.2 phpqa --tools ${workTools.join(',')} \\
@@ -207,11 +164,11 @@ async function worker(ceil) {
     --analyzedDirs /app --buildDir /analysis`);
 
 
-            if (fs.existsSync(`${repCodeFolder}`)) {
+            if (await checkFileExists(`${repCodeFolder}`)) {
                 await execShellCommand(`rm -rf ${repCodeFolder}`);
             }
 
-            if (fs.existsSync(`${repAnalysesFolder}-clone`)) {
+            if (await checkFileExists(`${repAnalysesFolder}-clone`)) {
                 await execShellCommand(`cp -rf ${repAnalysesFolder}-clone ${repAnalysesFolder}`);
                 await execShellCommand(`rm -rf ${repAnalysesFolder}-clone`);
             }
@@ -220,103 +177,193 @@ async function worker(ceil) {
     }
 }
 
-async function fun() {
-    /**
-     * @var {*}[] data
-     */
+async function analysis(row) {
+    await s.acquire()
+    try {
+        console.log(s.nrWaiting() + ' в очереди на обработку. ' + row.link)
 
-    let data = await getData(filepath);
-    let index = 0;
-    let runningStreams = 0;
+        if (await checkFileExists(`${row.codeFolder}`)) {
+            await execShellCommand(`rm -rf ${row.codeFolder}`);
+        }
 
-    const runWorker = function () {
-        if (index === data.length) {
-            if (runningStreams === 0) {
-                console.log('Done')
-            }
-        } else {
-            runningStreams++;
-            let runIndex = index;
-            console.log('Run row - ' + runIndex + '/' + data.length)
-            index++;
-            worker(data[runIndex]).then(function () {
-                runningStreams--;
-                runWorker();
+        if (await checkFileExists(`${row.analysesRepositoryFolder}`)) {
+            await execShellCommand(`cp -rf ${row.analysesRepositoryFolder} ${row.analysesRepositoryFolder}-clone`);
+        }
+
+        await execShellCommand(`git clone ${row.link} ${row.codeFolder}`);
+
+        // await execShellCommand(`find ${repCodeFolder} -type d -iname "*test*" -prune -exec rm -rf {} \\;`);
+        // await execShellCommand(`find ${repCodeFolder} -iname "*test*.*" -exec rm -rf {} \\;`);
+        await execShellCommand(`docker run --user $(id -u):$(id -g) --rm -v "${PWD}/${row.codeFolder}":/app -v  "${PWD}/${row.analysesRepositoryFolder}":/analysis \\
+    -v "${PWD}/src/phpqa-test/.phpqa.yml":/config-phpqa/.phpqa.yml \\
+    zdenekdrahos/phpqa:v1.25.0-php7.2 phpqa --tools ${row.tools.join(',')} \\
+    --ignoredDirs build,vendor,tests,lib,uploads,phpMyAdmin,phpmyadmin,library --config /config-phpqa \\
+    --analyzedDirs /app --buildDir /analysis`);
+
+
+        if (await checkFileExists(`${row.codeFolder}`)) {
+            await execShellCommand(`rm -rf ${row.codeFolder}`);
+        }
+
+        if (await checkFileExists(`${row.analysesRepositoryFolder}-clone`)) {
+            await execShellCommand(`cp -rf ${row.analysesRepositoryFolder}-clone ${row.analysesRepositoryFolder} && rm -rf ${row.analysesRepositoryFolder}-clone`);
+        }
+    } catch (e){
+        console.error(e);
+    }finally {
+        s.release();
+    }
+}
+
+async function dataPreparation(sourceData) {
+    let data = {
+        needRows: [],
+        sourceData,
+    }
+
+    console.log('Debug. Строка из списка:')
+    console.log(sourceData[0])
+
+    for (let i = 0; i < sourceData.length; i++) {
+        let row = sourceData[i];
+
+        let keys = Object.keys(row);
+        if (!keys.includes(columnLinkKey)) {
+            throw new Error('В строке ' + JSON.stringify(row, null, 2) + ' нет ссылки на репозиторий.')
+        }
+        if (!keys.includes(columnSizeKey)) {
+            throw new Error('В строке ' + JSON.stringify(row, null, 2) + ' нет колонки размера репозитория.')
+        }
+
+        let githubLink = row[columnLinkKey];
+        let size = row[columnSizeKey];
+        size = size ? Number(size) : null;
+
+        if (size && !Number.isNaN(size) && size < sizeLimit && githubLink && githubLink.includes('http')) {
+
+            let splitedUrl = githubLink.split('/');
+            let user = splitedUrl[3];
+            let repository = splitedUrl[4];
+
+            data.needRows.push({
+                link: row[columnLinkKey],
+                size,
+                user,
+                repository,
+                analysesUserFolder: `${analysesFolder}/${user}`,
+                analysesRepositoryFolder: `${analysesFolder}/${user}/${repository}`,
+                codeFolder: `${codeFolder}/${user}---${repository}`,
+                tools,
             });
         }
     }
 
-    for (let i = 0; i < streams; i++) {
-        runWorker();
-    }
+    return data;
 }
 
-if (filepath === '--help') {
-    console.log(exampleCommand)
-} else {
-    // 0
-    if (!filepath) {
-        new Error('Укажите путь к файлу с csv. ' + exampleCommand)
-    }
+async function foldersPreparation(data) {
+    let needRows = []
 
-    if (!columnLinkKey) {
-        new Error('Укажите колонку в которой находятся ссылки. ' + exampleCommand)
-    }
+    let length = data.needRows.length;
 
-    streams = Number(streams || 0)
+    for (let i = 0; i < length; i++) {
+        let row = data.needRows[i];
 
-    if (!streams || Number.isNaN(streams)) {
-        new Error('Укажите количество потоков. ' + exampleCommand)
-    }
+        let endLog = timeLog(`${i + 1}/${length} Подготовка директорий, проверка отчетов - ${row.link}`)
 
-    tools = (tools || '').split(',');
-    for (let i = 0; i < tools.length; i++) {
-        let tool = tools[i];
-        if (!accessTools.includes(tool)) {
-            new Error('Инструмент ' + tool + ' не предусмотрен. ' + exampleCommand)
+        if (!await checkFileExists(row.analysesUserFolder)) {
+            await Promise.all([
+                fs.promises.mkdir(row.analysesUserFolder),
+                fs.promises.mkdir(row.analysesRepositoryFolder),
+            ])
+        } else if (!await checkFileExists(row.analysesRepositoryFolder)) {
+            await fs.promises.mkdir(row.analysesRepositoryFolder);
         }
+
+        let workTools = [...tools];
+        /**
+         * @type {["phpmetrics","phpmd","pdepend","phpcs","phpcpd","phploc"]}
+         */
+        let existsResultTools = await getExistsResultTools(row.analysesRepositoryFolder);
+
+        workTools = workTools.filter(tool => !existsResultTools.includes(tool))
+
+        if (workTools.length) {
+            row.tools = workTools;
+            needRows.push(row)
+        }
+
+        endLog();
     }
-    if (!tools.length) {
-        new Error('Укажите phpqa tools. ' + exampleCommand)
-    }
 
-    filename = filepath.split('.');
-    fileExtension = filename.pop();
-    filename = filename.join('.');
-    codeFolder = filename + '/code';
-    analysesFolder = filename + '/analyses';
+    data.needRows = needRows
 
-    if (!fs.existsSync(filename)) fs.mkdirSync(filename);
-    if (!fs.existsSync(codeFolder)) fs.mkdirSync(codeFolder);
-    if (!fs.existsSync(analysesFolder)) fs.mkdirSync(analysesFolder);
-
-    fun();
+    return data;
 }
 
-// Example parallel work
-// let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
-// let iterator = 0;
-//
-//
-// function worker() {
-//     let number = numbers[iterator];
-//
-//     iterator++;
-//     if (number) {
-//         let time = Math.random() * 1000;
-//         let promise = new Promise(function (resolve) {
-//
-//             setTimeout(function () {
-//                 console.log(number + ' - ' + time);
-//                 resolve(number);
-//             }, time)
-//         })
-//         promise.then(worker)
-//     }
-//
-//     return;
-// }
-//
-// for (let i = 0; i < 4; i++) {
-//     worker();
-// }
+function sortData(data) {
+    // Сортировка по размеру, сначала самые маленькие
+
+    data.needRows = data.needRows.sort((a, b) => a.size - b.size);
+
+    return data;
+}
+
+
+async function fun() {
+    let endLog = timeLog('Создание основных директорий');
+    if (!await checkFileExists(filename)) await fs.promises.mkdir(filename);
+    if (!await checkFileExists(codeFolder)) await fs.promises.mkdir(codeFolder);
+    if (!await checkFileExists(analysesFolder)) await fs.promises.mkdir(analysesFolder);
+    endLog();
+    /**
+     * @var {*}[] data
+     */
+
+    endLog = timeLog('Получение данных');
+    let sourceData = await getData(filepath);
+    endLog();
+
+    endLog = timeLog('Подготовка данных');
+    let data = await dataPreparation(sourceData)
+    endLog();
+
+    endLog = timeLog('Подготовка директорий, проверка отчетов и фильтрация списка на обработку');
+    data = await foldersPreparation(data)
+    endLog();
+
+    endLog = timeLog('Сортировка данных');
+    data = sortData(data)
+    endLog();
+
+    endLog = timeLog('Обработка данных');
+    await Promise.allSettled(data.needRows.map(analysis))
+    endLog();
+
+    return;
+    // let index = 0;
+    // let runningStreams = 0;
+    //
+    // const runWorker = function () {
+    //     if (index === data.length) {
+    //         if (runningStreams === 0) {
+    //             console.log('Done')
+    //         }
+    //     } else {
+    //         runningStreams++;
+    //         let runIndex = index;
+    //         console.log('Run row - ' + runIndex + '/' + data.length + ' - ' + (data[runIndex][columnLinkKey] || ''))
+    //         index++;
+    //         worker(data[runIndex]).then(function () {
+    //             runningStreams--;
+    //             runWorker();
+    //         });
+    //     }
+    // }
+    //
+    // for (let i = 0; i < streams; i++) {
+    //     runWorker();
+    // }
+}
+
+fun();
