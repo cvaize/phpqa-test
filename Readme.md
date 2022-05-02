@@ -33,6 +33,9 @@ marcelog/Ci-Php-Phing-Example,https://github.com/marcelog/Ci-Php-Phing-Example,2
 ```shell
 node src/phpqa-test/app.js run-parallel -f "./dataset/60k_php_dataset_metrics.csv" -fc "./src/phpqa-test/.phpqa.yml" -t phpmetrics,phpmd,pdepend,phpcs,phpcpd,phploc
 ```
+```shell
+node src/phpqa-test/app.js run-parallel -f "./dataset/60k_php_dataset_metrics-chunk-0.csv" -fc "./src/phpqa-test/.phpqa.yml" -t phpmetrics
+```
 
 ```shell
 node src/phpqa-test/count-dataset-analysis.js -f "./dataset/60k_php_dataset_metrics.csv"
@@ -47,7 +50,7 @@ node src/phpqa-test/write-analysis-to-dataset.js -f "./dataset/60k_php_dataset_m
 ```
 
 ```shell
-node src/phpqa-test/app.js chunking -f "./dataset/60k_php_dataset_metrics.csv" -g chunk -ch 4
+node src/phpqa-test/app.js chunking -f "./dataset/60k_php_dataset_metrics.csv" -g chunk -ch 4  -t phpmetrics
 ```
 
 Запуск с помощью nohup

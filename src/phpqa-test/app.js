@@ -226,7 +226,6 @@ async function dataPreparation(sourceData) {
                 analysesUserFolder: `${analysesFolder}/${user}`,
                 analysesRepositoryFolder: `${analysesFolder}/${user}/${repository}`,
                 analysesCloneRepositoryFolder: `${analysesFolder}/${user}/${repository}-clone`,
-                fixRemove: `${analysesFolder}/${user}/${repository}/${repository}-clone`,
                 codeFolder: `${codeFolder}/${user}---${repository}`,
                 tools,
             });
@@ -252,8 +251,6 @@ async function foldersPreparation(needRows) {
         } else if (!await checkFileExists(row.analysesRepositoryFolder)) {
             await fs.promises.mkdir(row.analysesRepositoryFolder);
         }
-
-        await execShellCommand(`rm -rf ${row.fixRemove}`);
 
         let workTools = [...tools];
         /**
