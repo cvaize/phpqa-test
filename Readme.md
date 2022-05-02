@@ -76,3 +76,7 @@ nohup node src/phpqa-test/run-parallel.js -f "./dataset/60k_php_dataset_metrics.
 ```shell
 node src/phpqa-test/count-dataset-analysis.js -f "./dataset/60k_php_dataset_metrics.csv"
 ```
+
+```shell
+node src/phpqa-test/clear-dataset-analysis.js -f "./dataset/60k_php_dataset_metrics.csv"
+```

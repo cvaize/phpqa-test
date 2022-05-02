@@ -1,7 +1,60 @@
 const fs = require('fs');
-const csv = require('csv-parser')
+const path = require('path');
 const HTMLParser = require('node-html-parser');
 const rimraf = require("rimraf");
+const ArgParser = require("argparce");
+const getData = require('../utils/get-data');
+const isIgnore = require('../utils/is-ignore');
+const isIncludesContentInSource = require('../utils/is-includes-contentIn-source');
+
+const params = ArgParser.parse(process.argv.slice(2), {
+    args: [
+        {
+            // Заголовок в котором хранится ссылка на github репозиторий
+            type: 'string',
+            name: 'column-link-key',
+            short: 'cl',
+            default: 'link'
+        },
+        {
+            // Заголовок в котором хранится ссылка на github репозиторий
+            type: 'string',
+            name: 'column-size-key',
+            short: 'cs',
+            default: 'diskUsage (kb)'
+        },
+        {
+            // Путь к файлу csv
+            type: 'string',
+            name: 'filepath',
+            short: 'f'
+        }
+    ],
+    maxStrays: 0,
+    stopAtError: true,
+    errorExitCode: true
+});
+
+let filepath = params.args.filepath;
+let columnLinkKey = params.args['column-link-key'];
+let columnSizeKey = params.args['column-size-key'];
+
+if (!filepath) {
+    throw new Error('Укажите путь к файлу с csv.');
+}
+if (!fs.readFileSync(filepath)) {
+    throw new Error('По указанному пути файл csv не найден.');
+}
+if (!columnLinkKey) {
+    throw new Error('Укажите колонку в которой находятся ссылки.')
+}
+
+filepath = path.resolve(filepath);
+
+let filename = filepath.split('.');
+filename.pop()
+filename = filename.join('.');
+let analysesFolder = filename + '/analyses';
 
 const phraseXml = '<?xml'
 
@@ -12,37 +65,26 @@ const removeSource = function (filepath) {
     }
 }
 
-/**
- * @param {string} filepath
- * @param {string} phrase
- * @returns {boolean}
- */
-const isIncludesContentInSource = function (filepath, phrase) {
-    if (fs.existsSync(filepath)) {
-        /**
-         * @var {string} content
-         */
-        let content = fs.readFileSync(filepath, 'utf-8');
-
-        return !!(content && content.includes(phrase));
-    }
-    return false;
-}
-
-const clean = function (rowObject) {
+const clean = async function (rowObject) {
 
     let link = rowObject.link;
-    if (link && link.includes('http')) {
+    let ignore = true;
+    let size = Number(rowObject[columnSizeKey]);
+
+    if (!isIgnore(size, link)) {
+
         let splitedUrl = link.split('/');
         let repFolder = splitedUrl[3];
         let repName = splitedUrl[4];
         if (repFolder && repName) {
-            let folder = `./dataset/analysis/${repFolder}/${repName}`;
-            let cloneFolder = `${folder}-clone`;
+
+            let folder = `${analysesFolder}/${repFolder}/${repName}`;
+
             let phpmetricsHtmlFilepath = `${folder}/phpmetrics.html`;
             let phpmetricsXmlFilepath = `${folder}/phpmetrics.xml`;
 
-            removeSource(cloneFolder);
+            removeSource(`${folder}-clone`);
+            removeSource(`${folder}/${repName}-clone`);
 
             if (fs.existsSync(phpmetricsHtmlFilepath)) {
                 let phpmetrics = fs.readFileSync(phpmetricsHtmlFilepath, 'utf-8');
@@ -56,13 +98,13 @@ const clean = function (rowObject) {
                 }
             }
 
-            if (!isIncludesContentInSource(`${folder}/checkstyle.xml`, phraseXml)) {
+            if (!await isIncludesContentInSource(`${folder}/checkstyle.xml`, phraseXml)) {
                 removeSource(`${folder}/checkstyle.xml`);
             }
 
-            if (!isIncludesContentInSource(`${folder}/pdepend-dependencies.xml`, phraseXml)
-                || !isIncludesContentInSource(`${folder}/pdepend-jdepend.xml`, phraseXml)
-                || !isIncludesContentInSource(`${folder}/pdepend-summary.xml`, phraseXml)) {
+            if (!await isIncludesContentInSource(`${folder}/pdepend-dependencies.xml`, phraseXml)
+                || !await isIncludesContentInSource(`${folder}/pdepend-jdepend.xml`, phraseXml)
+                || !await isIncludesContentInSource(`${folder}/pdepend-summary.xml`, phraseXml)) {
                 removeSource(`${folder}/pdepend-dependencies.xml`);
                 removeSource(`${folder}/pdepend-jdepend.xml`);
                 removeSource(`${folder}/pdepend-summary.xml`);
@@ -70,15 +112,15 @@ const clean = function (rowObject) {
                 removeSource(`${folder}/pdepend-pyramid.svg`);
             }
 
-            if (!isIncludesContentInSource(`${folder}/phpcpd.xml`, phraseXml)) {
+            if (!await isIncludesContentInSource(`${folder}/phpcpd.xml`, phraseXml)) {
                 removeSource(`${folder}/phpcpd.xml`);
             }
 
-            if (!isIncludesContentInSource(`${folder}/phploc.xml`, phraseXml)) {
+            if (!await isIncludesContentInSource(`${folder}/phploc.xml`, phraseXml)) {
                 removeSource(`${folder}/phploc.xml`);
             }
 
-            if (!isIncludesContentInSource(`${folder}/phpmd.xml`, phraseXml)) {
+            if (!await isIncludesContentInSource(`${folder}/phpmd.xml`, phraseXml)) {
                 removeSource(`${folder}/phpmd.xml`);
             }
 
@@ -88,15 +130,14 @@ const clean = function (rowObject) {
     return rowObject;
 }
 
-let csvRows = [];
+async function main() {
+    const data = await getData(filepath);
 
-fs.createReadStream('./dataset/60k_php_dataset_metrics.csv')
-    .pipe(csv())
-    .on('data', (data) => csvRows.push(data))
-    .on('end', () => {
-        csvRows.map(clean)
-        // [
-        //   { NAME: 'Daffy Duck', AGE: '24' },
-        //   { NAME: 'Bugs Bunny', AGE: '22' }
-        // ]
-    });
+    for (let i = 0; i < data.length; i++) {
+        console.log(`${i+1}/${data.length}`)
+        await clean(data[i]);
+    }
+}
+
+main();
+

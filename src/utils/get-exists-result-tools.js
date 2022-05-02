@@ -1,6 +1,6 @@
 const fs = require('fs');
 const HTMLParser = require('node-html-parser');
-const isIncludesContentInSource = require('./test');
+const isIncludesContentInSource = require('./is-includes-contentIn-source');
 const checkFileExists = require('./check-file-exists');
 
 const phraseXml = '<?xml'

@@ -2,12 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const ArgParser = require("argparce");
 const getData = require('../utils/get-data');
-const execShellCommand = require('../utils/exec');
 const getExistsResultTools = require('../utils/get-exists-result-tools');
-const timeLog = require('../utils/time-log');
-const checkFileExists = require('../utils/check-file-exists');
 const isIgnore = require('../utils/is-ignore');
-const copy = require('recursive-copy');
 
 let counts = {
     total: 0,
