@@ -1,7 +1,3 @@
-const textCreateMainDirs = 'Создание основных директорий';
+const copy = require('recursive-copy');
 
-console.time(textCreateMainDirs);
-console.log(textCreateMainDirs+'...')
-setTimeout(() => {
-    console.timeEnd(textCreateMainDirs);
-}, 1000);
+copy('src/utils', 'src/phpqa-test/utils', {overwrite: true});

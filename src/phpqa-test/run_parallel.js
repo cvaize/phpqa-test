@@ -6,6 +6,7 @@ const getExistsResultTools = require('../utils/get-exists-result-tools');
 const timeLog = require('../utils/time-log');
 const checkFileExists = require('../utils/check-file-exists');
 const {Sema} = require('async-sema');
+const copy = require('recursive-copy');
 
 let accessTools = ['phpmetrics', 'phpmd', 'pdepend', 'phpcs', 'phpcpd', 'phploc']
 
@@ -110,84 +111,15 @@ codeFolder = filename + '/code';
 analysesFolder = filename + '/analyses';
 const s = new Sema(streams);
 
-// 2
-async function worker(ceil) {
-    let githubLink = ceil[columnLinkKey];
-    let size = ceil[columnSizeKey];
-    size = size ? Number(size) : null;
-    if (size && !Number.isNaN(size) && size < sizeLimit && githubLink && githubLink.includes('http') && githubLink.includes('github')) {
-
-        let splitedUrl = githubLink.split('/');
-        let repUser = splitedUrl[3];
-        let repName = splitedUrl[4];
-        let repAnalysesFolder = `${analysesFolder}/${repUser}/${repName}`;
-        let repCodeFolder = `${codeFolder}/${repUser}/${repName}`;
-
-        if (!await checkFileExists(`${analysesFolder}/${repUser}`)) {
-            await fs.promises.mkdir(`${analysesFolder}/${repUser}`);
-
-            await fs.promises.mkdir(repAnalysesFolder);
-        } else if (!await checkFileExists(repAnalysesFolder)) {
-            await fs.promises.mkdir(repAnalysesFolder);
-        }
-
-        if (await checkFileExists(`${repAnalysesFolder}-clone`)) {
-            await execShellCommand(`cp -rf ${repAnalysesFolder}-clone ${repAnalysesFolder} && rm -rf ${repAnalysesFolder}-clone`);
-        }
-
-        let workTools = [...tools];
-        let existsResultTools = await getExistsResultTools(repAnalysesFolder);
-
-        workTools = workTools.filter(tool => !existsResultTools.includes(tool))
-
-        if (workTools.length) {
-
-            if (!await checkFileExists(`${codeFolder}/${repUser}`)) {
-                await fs.promises.mkdir(`${codeFolder}/${repUser}`);
-            }
-
-            if (await checkFileExists(`${repCodeFolder}`)) {
-                await execShellCommand(`rm -rf ${repCodeFolder}`);
-            }
-
-            if (await checkFileExists(`${repAnalysesFolder}`)) {
-                await execShellCommand(`cp -rf ${repAnalysesFolder} ${repAnalysesFolder}-clone`);
-            }
-
-            await execShellCommand(`git clone ${githubLink} ${repCodeFolder}`);
-            // await execShellCommand(`find ${repCodeFolder} -type d -iname "*test*" -prune -exec rm -rf {} \\;`);
-            // await execShellCommand(`find ${repCodeFolder} -iname "*test*.*" -exec rm -rf {} \\;`);
-            await execShellCommand(`docker run --user $(id -u):$(id -g) --rm -v "${PWD}/${repCodeFolder}":/app -v  "${PWD}/${repAnalysesFolder}":/analysis \\
-    -v "${PWD}/.phpqa.yml":/config-phpqa/.phpqa.yml \\
-    zdenekdrahos/phpqa:v1.25.0-php7.2 phpqa --tools ${workTools.join(',')} \\
-    --ignoredDirs build,vendor,tests,lib,uploads,phpMyAdmin,phpmyadmin,library --config /config-phpqa \\
-    --analyzedDirs /app --buildDir /analysis`);
-
-
-            if (await checkFileExists(`${repCodeFolder}`)) {
-                await execShellCommand(`rm -rf ${repCodeFolder}`);
-            }
-
-            if (await checkFileExists(`${repAnalysesFolder}-clone`)) {
-                await execShellCommand(`cp -rf ${repAnalysesFolder}-clone ${repAnalysesFolder}`);
-                await execShellCommand(`rm -rf ${repAnalysesFolder}-clone`);
-            }
-
-        }
-    }
-}
-
 async function analysis(row) {
     await s.acquire()
     try {
         console.log(s.nrWaiting() + ' в очереди на обработку. ' + row.link)
 
-        if (await checkFileExists(`${row.codeFolder}`)) {
-            await execShellCommand(`rm -rf ${row.codeFolder}`);
-        }
+        await execShellCommand(`rm -rf ${row.codeFolder}`);
 
         if (await checkFileExists(`${row.analysesRepositoryFolder}`)) {
-            await execShellCommand(`cp -rf ${row.analysesRepositoryFolder} ${row.analysesRepositoryFolder}-clone`);
+            await copy(row.analysesRepositoryFolder, row.analysesCloneRepositoryFolder, {overwrite: true});
         }
 
         await execShellCommand(`git clone ${row.link} ${row.codeFolder}`);
@@ -200,13 +132,11 @@ async function analysis(row) {
     --ignoredDirs build,vendor,tests,lib,uploads,phpMyAdmin,phpmyadmin,library --config /config-phpqa \\
     --analyzedDirs /app --buildDir /analysis`);
 
+        await execShellCommand(`rm -rf ${row.codeFolder}`);
 
-        if (await checkFileExists(`${row.codeFolder}`)) {
-            await execShellCommand(`rm -rf ${row.codeFolder}`);
-        }
-
-        if (await checkFileExists(`${row.analysesRepositoryFolder}-clone`)) {
-            await execShellCommand(`cp -rf ${row.analysesRepositoryFolder}-clone ${row.analysesRepositoryFolder} && rm -rf ${row.analysesRepositoryFolder}-clone`);
+        if (await checkFileExists(`${row.analysesCloneRepositoryFolder}`)) {
+            await copy(row.analysesCloneRepositoryFolder, row.analysesRepositoryFolder, {overwrite: true});
+            await execShellCommand(`rm -rf ${row.analysesCloneRepositoryFolder}`);
         }
     } catch (e){
         console.error(e);
@@ -252,6 +182,8 @@ async function dataPreparation(sourceData) {
                 repository,
                 analysesUserFolder: `${analysesFolder}/${user}`,
                 analysesRepositoryFolder: `${analysesFolder}/${user}/${repository}`,
+                analysesCloneRepositoryFolder: `${analysesFolder}/${user}/${repository}-clone`,
+                fixRemove: `${analysesFolder}/${user}/${repository}/${repository}-clone`,
                 codeFolder: `${codeFolder}/${user}---${repository}`,
                 tools,
             });
@@ -279,6 +211,8 @@ async function foldersPreparation(data) {
         } else if (!await checkFileExists(row.analysesRepositoryFolder)) {
             await fs.promises.mkdir(row.analysesRepositoryFolder);
         }
+
+        await execShellCommand(`rm -rf ${row.fixRemove}`);
 
         let workTools = [...tools];
         /**
