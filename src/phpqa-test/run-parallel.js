@@ -19,6 +19,12 @@ const params = ArgParser.parse(process.argv.slice(2), {
             short: 'f'
         },
         {
+            // Путь к конфигу phpqa .phpqa.yml
+            type: 'string',
+            name: 'phpqa-config-filepath',
+            short: 'fc'
+        },
+        {
             // Заголовок в котором хранится ссылка на github репозиторий
             type: 'string',
             name: 'column-link-key',
@@ -66,6 +72,7 @@ let streams = params.args.streams;
 let tools = params.args.tools;
 let columnSizeKey = params.args['column-size-key'];
 let sizeLimit = params.args['size-limit'];
+let phpqaConfigFilepath = params.args['phpqa-config-filepath'];
 
 
 const PWD = process.env.PWD;
@@ -127,9 +134,9 @@ async function analysis(row) {
         // await execShellCommand(`find ${repCodeFolder} -type d -iname "*test*" -prune -exec rm -rf {} \\;`);
         // await execShellCommand(`find ${repCodeFolder} -iname "*test*.*" -exec rm -rf {} \\;`);
         await execShellCommand(`docker run --user $(id -u):$(id -g) --rm -v "${PWD}/${row.codeFolder}":/app -v  "${PWD}/${row.analysesRepositoryFolder}":/analysis \\
-    -v "${PWD}/src/phpqa-test/.phpqa.yml":/config-phpqa/.phpqa.yml \\
+    ${phpqaConfigFilepath ? `-v "${phpqaConfigFilepath}":/config-phpqa/.phpqa.yml` : ''} \\
     zdenekdrahos/phpqa:v1.25.0-php7.2 phpqa --tools ${row.tools.join(',')} \\
-    --ignoredDirs build,vendor,tests,lib,uploads,phpMyAdmin,phpmyadmin,library --config /config-phpqa \\
+    --ignoredDirs build,vendor,tests,lib,uploads,phpMyAdmin,phpmyadmin,library ${phpqaConfigFilepath ? `--config /config-phpqa` : ''}\\
     --analyzedDirs /app --buildDir /analysis`);
 
         await execShellCommand(`rm -rf ${row.codeFolder}`);

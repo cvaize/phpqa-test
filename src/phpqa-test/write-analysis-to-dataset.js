@@ -1,21 +1,64 @@
 const fs = require('fs');
-const csv = require('csv-parser')
 const csvWriter = require('csv-write-stream')
 const HTMLParser = require('node-html-parser');
+const ArgParser = require("argparce");
+const getData = require("../utils/get-data");
+const path = require("path");
 const average = function (nums) {
     return nums.reduce((a, b) => (a + b)) / nums.length;
 }
-//
-// let replaceEnToRu = {
-//     'Maintainability': 'Ремонтопригодность',
-//     'Accessibility for new developers': 'Доступность для новых разработчиков',
-//     'Simplicity of algorithms': 'Простота алгоритмов',
-//     'Volume': 'Объем',
-//     'Reducing bug&#039;s probability': 'Снижение вероятности ошибки',
-// }
 
-const sourceFilename = './dataset/60k_php_dataset_metrics.csv';
-const resultFilename = './dataset/60k_php_dataset_for_labelling_result.csv';
+const params = ArgParser.parse(process.argv.slice(2), {
+    args: [
+        {
+            // Заголовок в котором хранится ссылка на github репозиторий
+            type: 'string',
+            name: 'column-link-key',
+            short: 'cl',
+            default: 'link'
+        },
+        {
+            // Заголовок в котором хранится ссылка на github репозиторий
+            type: 'string',
+            name: 'column-size-key',
+            short: 'cs',
+            default: 'diskUsage (kb)'
+        },
+        {
+            // Путь к файлу csv
+            type: 'string',
+            name: 'filepath',
+            short: 'f'
+        }
+    ],
+    maxStrays: 0,
+    stopAtError: true,
+    errorExitCode: true
+});
+
+let filepath = params.args.filepath;
+let columnLinkKey = params.args['column-link-key'];
+
+if (!filepath) {
+    throw new Error('Укажите путь к файлу с csv.');
+}
+if (!fs.readFileSync(filepath)) {
+    throw new Error('По указанному пути файл csv не найден.');
+}
+if (!columnLinkKey) {
+    throw new Error('Укажите колонку в которой находятся ссылки.')
+}
+
+filepath = path.resolve(filepath);
+
+let filename = filepath.split('.');
+let fileExtension = filename.pop();
+filename = filename.join('.');
+let analysesFolder = filename + '/analyses';
+
+const sourceFilename = `${filename}.${fileExtension}`;
+const resultFilename = `${filename}-result.${fileExtension}`;
+
 let scoresDefault = {
     'Maintainability': '',
     'Accessibility for new developers': '',
@@ -25,11 +68,11 @@ let scoresDefault = {
     'Average Total': '',
 };
 
-const getScore = function (repFolder, repName) {
+const getScore = async function (repFolder, repName) {
     let scores = {
         ...scoresDefault,
     };
-    let filepath = `./dataset/analysis/${repFolder}/${repName}/phpmetrics.html`;
+    let filepath = `${analysesFolder}/${repFolder}/${repName}/phpmetrics.html`;
 
     if (fs.existsSync(filepath)) {
         let phpmetrics = fs.readFileSync(filepath, 'utf-8');
@@ -52,7 +95,7 @@ const getScore = function (repFolder, repName) {
     return scores;
 }
 
-const fillScore = function (rowObject) {
+const fillScore = async function (rowObject) {
     rowObject = {
         ...rowObject,
         ...scoresDefault,
@@ -64,7 +107,7 @@ const fillScore = function (rowObject) {
         let repFolder = splitedUrl[3];
         let repName = splitedUrl[4];
         if (repFolder && repName) {
-            let scores = getScore(repFolder, repName);
+            let scores = await getScore(repFolder, repName);
             rowObject = {
                 ...rowObject,
                 ...scores,
@@ -76,34 +119,31 @@ const fillScore = function (rowObject) {
     return rowObject;
 }
 
-let csvRows = [];
+async function main() {
+    let data = await getData(filepath);
 
-fs.createReadStream(sourceFilename)
-    .pipe(csv())
-    .on('data', (data) => csvRows.push(data))
-    .on('end', () => {
-        csvRows = csvRows.map(fillScore)
-        // [
-        //   { NAME: 'Daffy Duck', AGE: '24' },
-        //   { NAME: 'Bugs Bunny', AGE: '22' }
-        // ]
+    for (let i = 0; i < data.length; i++) {
+        console.log(`${i+1}/${data.length}`)
+        data[i] = await fillScore(data[i])
+    }
 
-        const writer = csvWriter()
-        if (fs.existsSync(resultFilename)) {
-            fs.unlinkSync(resultFilename);
+    const writer = csvWriter()
+    if (fs.existsSync(resultFilename)) {
+        fs.unlinkSync(resultFilename);
+    }
+
+    writer.pipe(fs.createWriteStream(resultFilename))
+    for (let i = 0; i < data.length; i++) {
+        writer.write(data[i])
+    }
+    writer.end()
+
+    setTimeout(function () {
+        if (fs.existsSync(sourceFilename) && fs.existsSync(resultFilename)) {
+            fs.unlinkSync(sourceFilename);
+            fs.renameSync(resultFilename, sourceFilename);
         }
+    }, 100)
+}
 
-        writer.pipe(fs.createWriteStream(resultFilename))
-        for (let i = 0; i < csvRows.length; i++) {
-            let csvRow = csvRows[i];
-            writer.write(csvRow)
-        }
-        writer.end()
-
-        setTimeout(function (){
-            if (fs.existsSync(sourceFilename) && fs.existsSync(resultFilename)) {
-                fs.unlinkSync(sourceFilename);
-                fs.renameSync(resultFilename, sourceFilename);
-            }
-        }, 100)
-    });
+main()

@@ -65,7 +65,7 @@ docker run --user $(id -u):$(id -g) -it --rm -v "$PWD":/usr/src/app -w /usr/src/
 
 В этом пункте установите nodejs, желательно 18 версию (чисто чтобы обрабатывало быстрее)
 ```shell
-node src/phpqa-test/run-parallel.js -f "./dataset/60k_php_dataset_metrics.csv" -t phpmetrics,phpmd,pdepend,phpcs,phpcpd,phploc
+node src/phpqa-test/run-parallel.js -f "./dataset/60k_php_dataset_metrics.csv" -fc "./src/phpqa-test/.phpqa.yml" -t phpmetrics,phpmd,pdepend,phpcs,phpcpd,phploc
 ```
 
 Запуск с помощью nohup
@@ -79,4 +79,8 @@ node src/phpqa-test/count-dataset-analysis.js -f "./dataset/60k_php_dataset_metr
 
 ```shell
 node src/phpqa-test/clear-dataset-analysis.js -f "./dataset/60k_php_dataset_metrics.csv"
+```
+
+```shell
+node src/phpqa-test/write-analysis-to-dataset.js -f "./dataset/60k_php_dataset_metrics.csv"
 ```
