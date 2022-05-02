@@ -1,7 +1,14 @@
 const fs = require('fs');
-const csv = require('csv-parser')
+const path = require('path');
+const ArgParser = require("argparce");
+const getData = require('../utils/get-data');
+const execShellCommand = require('../utils/exec');
+const getExistsResultTools = require('../utils/get-exists-result-tools');
+const timeLog = require('../utils/time-log');
+const checkFileExists = require('../utils/check-file-exists');
+const isIgnore = require('../utils/is-ignore');
+const copy = require('recursive-copy');
 
-let csvRows = [];
 let counts = {
     total: 0,
     ignore: 0,
@@ -21,42 +28,85 @@ let p3 = 'Simplicity of algorithms';
 let p4 = 'Volume';
 let p5 = 'Reducing bug\'s probability';
 
-const counter = function (rowObject) {
+
+const params = ArgParser.parse(process.argv.slice(2), {
+    args: [
+        {
+            // Заголовок в котором хранится ссылка на github репозиторий
+            type: 'string',
+            name: 'column-link-key',
+            short: 'cl',
+            default: 'link'
+        },
+        {
+            // Заголовок в котором хранится ссылка на github репозиторий
+            type: 'string',
+            name: 'column-size-key',
+            short: 'cs',
+            default: 'diskUsage (kb)'
+        },
+        {
+            // Заголовок в котором хранится оценка разработчика
+            type: 'string',
+            name: 'column-score-key',
+            short: 'cr',
+            default: 'D. Orlov score 0 - 100'
+        },
+        {
+            // Путь к файлу csv
+            type: 'string',
+            name: 'filepath',
+            short: 'f'
+        }
+    ],
+    maxStrays: 0,
+    stopAtError: true,
+    errorExitCode: true
+});
+
+let filepath = params.args.filepath;
+let columnLinkKey = params.args['column-link-key'];
+let columnSizeKey = params.args['column-size-key'];
+let columnScoreKey = params.args['column-score-key'];
+
+if (!filepath) {
+    throw new Error('Укажите путь к файлу с csv.');
+}
+if (!fs.readFileSync(filepath)) {
+    throw new Error('По указанному пути файл csv не найден.');
+}
+if (!columnLinkKey) {
+    throw new Error('Укажите колонку в которой находятся ссылки.')
+}
+
+filepath = path.resolve(filepath);
+
+let filename = filepath.split('.');
+filename.pop()
+filename = filename.join('.');
+let analysesFolder = filename + '/analyses';
+
+const counter = async function (rowObject) {
 
     let link = rowObject.link;
     let ignore = true;
-    let size = Number(rowObject['diskUsage (kb)']);
+    let size = Number(rowObject[columnSizeKey]);
 
-    if (!Number.isNaN(size) && size < 200000 && link && link.includes('http')) {
+    if (!isIgnore(size, link)) {
+
         let splitedUrl = link.split('/');
         let repFolder = splitedUrl[3];
         let repName = splitedUrl[4];
         if (repFolder && repName) {
+
             ignore = false;
-            let folder = `./dataset/analysis/${repFolder}/${repName}`;
+            let folder = `${analysesFolder}/${repFolder}/${repName}`;
 
-            if (fs.existsSync(`${folder}/phpmetrics.html`)) {
-                counts.phpmetrics++;
-            }
+            let existsResultTools = await getExistsResultTools(folder);
 
-            if (fs.existsSync(`${folder}/checkstyle.xml`)) {
-                counts.phpcs++;
-            }
-
-            if (fs.existsSync(`${folder}/pdepend-summary.xml`)) {
-                counts.pdepend++;
-            }
-
-            if (fs.existsSync(`${folder}/phpcpd.xml`)) {
-                counts.phpcpd++;
-            }
-
-            if (fs.existsSync(`${folder}/phploc.xml`)) {
-                counts.phploc++;
-            }
-
-            if (fs.existsSync(`${folder}/phpmd.xml`)) {
-                counts.phpmd++;
+            for (let i = 0; i < existsResultTools.length; i++) {
+                let existsResultTool = existsResultTools[i];
+                counts[existsResultTool]++;
             }
 
         }
@@ -66,32 +116,31 @@ const counter = function (rowObject) {
         counts.ignore++;
     }
 
-    if(rowObject[p1] && rowObject[p2] && rowObject[p3] && rowObject[p4] && rowObject[p5] &&
+    if (rowObject[p1] && rowObject[p2] && rowObject[p3] && rowObject[p4] && rowObject[p5] &&
         (
-        (rowObject[p1] === '0' || rowObject[p1] === '100')
-        || (rowObject[p2] === '0' || rowObject[p2] === '100')
-        || (rowObject[p3] === '0' || rowObject[p3] === '100')
-        || (rowObject[p4] === '0' || rowObject[p4] === '100')
-        || (rowObject[p5] === '0' || rowObject[p5] === '100')
+            (rowObject[p1] === '0' || rowObject[p1] === '100')
+            || (rowObject[p2] === '0' || rowObject[p2] === '100')
+            || (rowObject[p3] === '0' || rowObject[p3] === '100')
+            || (rowObject[p4] === '0' || rowObject[p4] === '100')
+            || (rowObject[p5] === '0' || rowObject[p5] === '100')
         ) &&
-        (!rowObject['D. Orlov score 0 - 100'] || Number.isNaN(Number(rowObject['D. Orlov score 0 - 100'])))){
+        (!rowObject[columnScoreKey] || Number.isNaN(Number(rowObject[columnScoreKey])))) {
         counts.needReview++;
     }
 
     return rowObject;
 }
 
-fs.createReadStream('./dataset/60k_php_dataset_metrics.csv')
-    .pipe(csv())
-    .on('data', (data) => csvRows.push(data))
-    .on('end', () => {
-        counts.total = csvRows.length;
-        csvRows.map(counter)
-        counts.totalMinusIgnore = counts.total - counts.ignore;
-        // Вывод в консоль результата
-        console.log(counts);
-        // [
-        //   { NAME: 'Daffy Duck', AGE: '24' },
-        //   { NAME: 'Bugs Bunny', AGE: '22' }
-        // ]
-    });
+async function main() {
+    const data = await getData(filepath);
+
+    counts.total = data.length;
+    for (let i = 0; i < data.length; i++) {
+        console.log(`${i+1}/${data.length}`)
+        await counter(data[i]);
+    }
+    counts.totalMinusIgnore = counts.total - counts.ignore;
+    console.log(counts);
+}
+
+main();
