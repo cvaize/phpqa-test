@@ -5,12 +5,15 @@ const execShellCommand = require('../utils/exec');
 const getExistsResultTools = require('../utils/get-exists-result-tools');
 const timeLog = require('../utils/time-log');
 const checkFileExists = require('../utils/check-file-exists');
+const writeData = require('../utils/write-data');
 const {Sema} = require('async-sema');
 const copy = require('recursive-copy');
+const _ = require('lodash')
 
+let accessCommands = ['run-parallel', 'chunking']
 let accessTools = ['phpmetrics', 'phpmd', 'pdepend', 'phpcs', 'phpcpd', 'phploc']
 
-const params = ArgParser.parse(process.argv.slice(2), {
+const params = ArgParser.parse(process.argv.slice(3), {
     args: [
         {
             // Путь к файлу csv
@@ -58,7 +61,26 @@ const params = ArgParser.parse(process.argv.slice(2), {
             name: 'size-limit',
             short: 'l',
             default: 200000
-        }
+        },
+        {
+            // Группа
+            type: 'string',
+            name: 'group',
+            short: 'g'
+        },
+        {
+            // Группа completed
+            type: 'string',
+            name: 'group-completed',
+            short: 'gc',
+            default: 'completed'
+        },
+        {
+            // Количество частей
+            type: 'uinteger',
+            name: 'chunks',
+            short: 'ch'
+        },
     ],
     maxStrays: 0,
     stopAtError: true,
@@ -66,7 +88,11 @@ const params = ArgParser.parse(process.argv.slice(2), {
 });
 
 // 0
+let command = process.argv[2];
 let filepath = params.args.filepath;
+let group = params.args.group;
+let chunksCount = params.args.chunks;
+let groupCompleted = params.args['group-completed'];
 let columnLinkKey = params.args['column-link-key'];
 let parallel = params.args['parallel-calls'];
 let tools = params.args.tools;
@@ -81,6 +107,9 @@ let analysesFolder = '';
 let filename = '';
 let fileExtension = '';
 
+if (!accessCommands.includes(command)) {
+    throw new Error('Команда ' + command + ' не предусмотрена.')
+}
 
 if (!filepath) {
     throw new Error('Укажите путь к файлу с csv.');
@@ -108,6 +137,15 @@ for (let i = 0; i < tools.length; i++) {
 }
 if (!tools.length) {
     throw new Error('Укажите phpqa tools.')
+}
+
+if (command === 'chunking') {
+    if (!group) {
+        throw new Error('Укажите группу.')
+    }
+    if (!chunksCount) {
+        throw new Error('Укажите группу.')
+    }
 }
 
 
@@ -145,18 +183,15 @@ async function analysis(row) {
             await copy(row.analysesCloneRepositoryFolder, row.analysesRepositoryFolder, {overwrite: true});
             await execShellCommand(`rm -rf ${row.analysesCloneRepositoryFolder}`);
         }
-    } catch (e){
+    } catch (e) {
         console.error(e);
-    }finally {
+    } finally {
         s.release();
     }
 }
 
 async function dataPreparation(sourceData) {
-    let data = {
-        needRows: [],
-        sourceData,
-    }
+    let needRows = [];
 
     console.log('Debug. Строка из списка:')
     console.log(sourceData[0])
@@ -182,7 +217,8 @@ async function dataPreparation(sourceData) {
             let user = splitedUrl[3];
             let repository = splitedUrl[4];
 
-            data.needRows.push({
+            needRows.push({
+                sourceRow: row,
                 link: row[columnLinkKey],
                 size,
                 user,
@@ -197,16 +233,16 @@ async function dataPreparation(sourceData) {
         }
     }
 
-    return data;
+    return needRows;
 }
 
-async function foldersPreparation(data) {
-    let needRows = []
+async function foldersPreparation(needRows) {
+    let needRows_ = []
 
-    let length = data.needRows.length;
+    let length = needRows.length;
 
     for (let i = 0; i < length; i++) {
-        let row = data.needRows[i];
+        let row = needRows[i];
 
         let endLog = timeLog(`${i + 1}/${length} Подготовка директорий, проверка отчетов - ${row.link}`)
 
@@ -231,27 +267,47 @@ async function foldersPreparation(data) {
 
         if (workTools.length) {
             row.tools = workTools;
-            needRows.push(row)
+            needRows_.push(row)
         }
 
         endLog();
     }
 
-    data.needRows = needRows
-
-    return data;
+    return needRows_;
 }
 
-function sortData(data) {
+function sortData(needRows) {
     // Сортировка по размеру, сначала самые маленькие
-
-    data.needRows = data.needRows.sort((a, b) => a.size - b.size);
-
-    return data;
+    return needRows.sort((a, b) => a.size - b.size);
 }
 
+async function copyChunkFiles(row, chunkFilename) {
+    await s.acquire()
+    try {
+        let analysesUserFolder = row.analysesUserFolder.replace(filename, chunkFilename);
+        let analysesRepositoryFolder = row.analysesRepositoryFolder.replace(filename, chunkFilename);
+        let analysesCloneRepositoryFolder = row.analysesCloneRepositoryFolder.replace(filename, chunkFilename);
 
-async function fun() {
+        await copy(row.analysesUserFolder, analysesUserFolder, {overwrite: true});
+        await copy(row.analysesRepositoryFolder, analysesRepositoryFolder, {overwrite: true});
+        await copy(row.analysesCloneRepositoryFolder, analysesCloneRepositoryFolder, {overwrite: true});
+
+    } catch (e) {
+        console.error(e);
+    } finally {
+        s.release();
+    }
+}
+
+function getChunkFilePath(i) {
+    return `${filename}-${group}-${i}.${fileExtension}`;
+}
+
+function getChunkFilename(i) {
+    return `${filename}-${group}-${i}`;
+}
+
+async function main() {
     let endLog = timeLog('Создание основных директорий');
     if (!await checkFileExists(filename)) await fs.promises.mkdir(filename);
     if (!await checkFileExists(codeFolder)) await fs.promises.mkdir(codeFolder);
@@ -266,45 +322,67 @@ async function fun() {
     endLog();
 
     endLog = timeLog('Подготовка данных');
-    let data = await dataPreparation(sourceData)
+    let needRows = await dataPreparation(sourceData)
     endLog();
 
     endLog = timeLog('Подготовка директорий, проверка отчетов и фильтрация списка на обработку');
-    data = await foldersPreparation(data)
+    needRows = await foldersPreparation(needRows)
     endLog();
 
     endLog = timeLog('Сортировка данных');
-    data = sortData(data)
+    needRows = sortData(needRows)
     endLog();
 
-    endLog = timeLog('Обработка данных');
-    await Promise.allSettled(data.needRows.map(analysis))
-    endLog();
+    switch (command) {
+        case 'run-parallel':
+            endLog = timeLog('Параллельная обработка данных');
+            await Promise.allSettled(needRows.map(analysis))
+            endLog();
+            break;
+        case 'chunking':
+            endLog = timeLog('Разделение на части');
+            let chunks = _.chunk(needRows, chunksCount);
+            let chunksSources = chunks.map(() => []);
+            let promises = [];
 
-    return;
-    // let index = 0;
-    // let runningStreams = 0;
-    //
-    // const runWorker = function () {
-    //     if (index === data.length) {
-    //         if (runningStreams === 0) {
-    //             console.log('Done')
-    //         }
-    //     } else {
-    //         runningStreams++;
-    //         let runIndex = index;
-    //         console.log('Run row - ' + runIndex + '/' + data.length + ' - ' + (data[runIndex][columnLinkKey] || ''))
-    //         index++;
-    //         worker(data[runIndex]).then(function () {
-    //             runningStreams--;
-    //             runWorker();
-    //         });
-    //     }
-    // }
-    //
-    // for (let i = 0; i < parallel; i++) {
-    //     runWorker();
-    // }
+            for (let i = 0; i < chunks.length; i++) {
+                let chunk = chunks[i];
+                let chunkSource = chunksSources[i];
+                let chunkFilename = getChunkFilename(i);
+
+                for (let j = 0; j < chunk.length; j++) {
+                    let row = chunk[j];
+                    chunkSource.push(row.sourceRow);
+
+                    promises.push(copyChunkFiles(row, chunkFilename))
+                }
+            }
+
+            await Promise.allSettled(promises)
+
+            for (let i = 0; i < chunksSources.length; i++) {
+                await writeData(getChunkFilePath(i), chunksSources[i]);
+            }
+
+            endLog();
+            break;
+    }
 }
 
-fun();
+main();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
