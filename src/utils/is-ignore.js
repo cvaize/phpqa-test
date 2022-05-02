@@ -4,6 +4,6 @@
  * @param {string} link
  * @returns {boolean|boolean}
  */
-module.exports = function (size, link){
-    return Number.isNaN(size) || size >= 200000 || !link || !link.includes('http')
+module.exports = function (size, sizeLimit, link){
+    return Number.isNaN(size) || size >= sizeLimit || !link || !link.includes('http')
 }

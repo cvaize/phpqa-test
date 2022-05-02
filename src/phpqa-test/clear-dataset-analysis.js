@@ -28,6 +28,13 @@ const params = ArgParser.parse(process.argv.slice(2), {
             type: 'string',
             name: 'filepath',
             short: 'f'
+        },
+        {
+            // Лимит в kb
+            type: 'uinteger',
+            name: 'size-limit',
+            short: 'l',
+            default: 200000
         }
     ],
     maxStrays: 0,
@@ -38,6 +45,7 @@ const params = ArgParser.parse(process.argv.slice(2), {
 let filepath = params.args.filepath;
 let columnLinkKey = params.args['column-link-key'];
 let columnSizeKey = params.args['column-size-key'];
+let sizeLimit = params.args['size-limit'];
 
 if (!filepath) {
     throw new Error('Укажите путь к файлу с csv.');
@@ -71,7 +79,7 @@ const clean = async function (rowObject) {
     let ignore = true;
     let size = Number(rowObject[columnSizeKey]);
 
-    if (!isIgnore(size, link)) {
+    if (!isIgnore(size, sizeLimit, link)) {
 
         let splitedUrl = link.split('/');
         let repFolder = splitedUrl[3];

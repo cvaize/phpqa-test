@@ -26,51 +26,12 @@ rafu1987/t3bootstrap-project,https://github.com/rafu1987/t3bootstrap-project,201
 ZAP-Quebec/AuthPuppy,https://github.com/ZAP-Quebec/AuthPuppy,2013-01-18T01:23:14Z,2013-01-18T01:29:56Z,FALSE,4756,7,,97.290000000000006,49.759999999999998,50.289999999999999,100,93.439999999999998,78.159999999999997
 marcelog/Ci-Php-Phing-Example,https://github.com/marcelog/Ci-Php-Phing-Example,2012-04-20T18:13:10Z,2012-04-21T14:13:38Z,FALSE,141,9,,86.599999999999994,50,100,100,100,87.319999999999993
 ```
-#### Генерация аналитики
-```shell
-bash run_dataset.sh
-```
-Аналитика будет помещаться в директорию `dataset/analysis`.
-#### Очистка файлов аналитики от ошибочных результатов
-```shell
-docker run --user $(id -u):$(id -g) -it --rm -v "$PWD":/usr/src/app -w /usr/src/app node node clear-dataset-analysis.js
-```
-#### Записать баллы из аналитики в файл csv датасет `60k_php_dataset_metrics.csv`.
-```shell
-docker run --user $(id -u):$(id -g) -it --rm -v "$PWD":/usr/src/app -w /usr/src/app node node write-analysis-to-dataset.js
-```
 
-
-### Другие команды
-#### Запуск статичного скрипта
-Просто меняйте репозиторий в скрипте и выполнаяйте команду:
-```shell
-bash run.sh
-```
-#### Запуск скрипта с переменными
-В нем вы можете в командной строке указать URL репозитория github.
-```shell
-export GIT_URL=https://github.com/sabitertan/webpos && bash run_with_env.sh
-```
-#### Запустить в фоне на сервере
-```shell
-nohup /bin/bash /root/myapp/run_dataset_semaphore.sh </dev/null &>/dev/null &
-```
-#### Посчитать результат оценки датасета
-```shell
-docker run --user $(id -u):$(id -g) -it --rm -v "$PWD":/usr/src/app -w /usr/src/app node node count-dataset-analysis.js
-```
-
-## Запуск команд через nodejs
+## Генерация аналитики через nodejs
 
 В этом пункте установите nodejs, желательно 18 версию (чисто чтобы обрабатывало быстрее)
 ```shell
 node src/phpqa-test/run-parallel.js -f "./dataset/60k_php_dataset_metrics.csv" -fc "./src/phpqa-test/.phpqa.yml" -t phpmetrics,phpmd,pdepend,phpcs,phpcpd,phploc
-```
-
-Запуск с помощью nohup
-```shell
-nohup node src/phpqa-test/run-parallel.js -f "./dataset/60k_php_dataset_metrics.csv" -t phpmetrics,phpmd,pdepend,phpcs,phpcpd,phploc > run_parallel.out 2>&1 &
 ```
 
 ```shell
@@ -83,4 +44,9 @@ node src/phpqa-test/clear-dataset-analysis.js -f "./dataset/60k_php_dataset_metr
 
 ```shell
 node src/phpqa-test/write-analysis-to-dataset.js -f "./dataset/60k_php_dataset_metrics.csv"
+```
+
+Запуск с помощью nohup
+```shell
+nohup node src/phpqa-test/run-parallel.js -f "./dataset/60k_php_dataset_metrics.csv" -t phpmetrics,phpmd,pdepend,phpcs,phpcpd,phploc > run_parallel.out 2>&1 &
 ```
