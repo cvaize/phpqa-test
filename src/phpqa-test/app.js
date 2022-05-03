@@ -167,14 +167,14 @@ async function analysis(row) {
             await copy(row.analysesRepositoryFolder, row.analysesCloneRepositoryFolder, {overwrite: true});
         }
 
-        await execShellCommand(`git clone ${row.link} ${row.codeFolder}`);
+        await execShellCommand(`git clone git@github.com:${row.user.trim()}/${row.repository.trim()}.git ${row.codeFolder}`);
 
         // await execShellCommand(`find ${repCodeFolder} -type d -iname "*test*" -prune -exec rm -rf {} \\;`);
         // await execShellCommand(`find ${repCodeFolder} -iname "*test*.*" -exec rm -rf {} \\;`);
         await execShellCommand(`docker run --user $(id -u):$(id -g) --rm -v "${PWD}/${row.codeFolder}":/app -v  "${PWD}/${row.analysesRepositoryFolder}":/analysis \\
     ${phpqaConfigFilepath ? `-v "${phpqaConfigFilepath}":/config-phpqa/.phpqa.yml` : ''} \\
     zdenekdrahos/phpqa:v1.25.0-php7.2 phpqa --tools ${row.tools.join(',')} \\
-    --ignoredDirs build,vendor,tests,lib,uploads,phpMyAdmin,phpmyadmin,library ${phpqaConfigFilepath ? `--config /config-phpqa` : ''}\\
+    --ignoredDirs build,vendor,tests,uploads,phpMyAdmin,phpmyadmin ${phpqaConfigFilepath ? `--config /config-phpqa` : ''}\\
     --analyzedDirs /app --buildDir /analysis`);
 
         await execShellCommand(`rm -rf ${row.codeFolder}`);
