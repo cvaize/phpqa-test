@@ -1,9 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 const ArgParser = require("argparce");
-const getData = require('../utils/get-data');
-const getExistsResultTools = require('../utils/get-exists-result-tools');
-const isIgnore = require('../utils/is-ignore');
+const getData = require('./utils/get-data');
+const getExistsResultTools = require('./utils/get-exists-result-tools');
+const isIgnore = require('./utils/is-ignore');
 
 let counts = {
     total: 0,

@@ -3,9 +3,9 @@ const path = require('path');
 const HTMLParser = require('node-html-parser');
 const rimraf = require("rimraf");
 const ArgParser = require("argparce");
-const getData = require('../utils/get-data');
-const isIgnore = require('../utils/is-ignore');
-const isIncludesContentInSource = require('../utils/is-includes-contentIn-source');
+const getData = require('./utils/get-data');
+const isIgnore = require('./utils/is-ignore');
+const isIncludesContentInSource = require('./utils/is-includes-contentIn-source');
 
 const params = ArgParser.parse(process.argv.slice(2), {
     args: [
