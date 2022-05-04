@@ -2,40 +2,9 @@ const fs = require('../providers/fs');
 const commonRun = require('./_run');
 const copy = require('recursive-copy');
 const writeData = require('../utils/write-data');
-const getFolders = require('../utils/get-folders');
+const getChunkName = require('../utils/get-chunk-name');
+const transformFolder = require('../utils/transform-folder');
 
-/**
- * @param {string} group
- * @param {number} index
- * @returns {string}
- */
-function getChunkName(group, index) {
-    return `${group}-${index}`;
-}
-
-/**
- *
- * @param {string} filepath
- * @param {string} name
- * @return {{
- *       "filepath": "/home/cvaize/PhpstormProjects/datasince/dataset/60k_php_dataset_metrics.csv",
- *       "basename": "60k_php_dataset_metrics.csv",
- *       "filename": "60k_php_dataset_metrics",
- *       "extname": ".csv",
- *       "folder": "/home/cvaize/PhpstormProjects/datasince/dataset/60k_php_dataset_metrics",
- *       "codeFolder": "/home/cvaize/PhpstormProjects/datasince/dataset/60k_php_dataset_metrics/code",
- *       "analysesFolder": "/home/cvaize/PhpstormProjects/datasince/dataset/60k_php_dataset_metrics/analyses"
- *     }}
- */
-function transformFolder(filepath, name) {
-    filepath = filepath.split('.');
-
-    filepath[filepath.length - 2]+= '-'+name;
-
-    filepath = filepath.join('.');
-
-    return getFolders(filepath);
-}
 
 /**
  * @param {{

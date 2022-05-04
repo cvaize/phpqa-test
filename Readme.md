@@ -42,6 +42,11 @@ node src/phpqa-test/write-analysis-to-dataset.js -f "../dataset/60k_php_dataset_
 node src/phpqa-test/app.js chunk -f "../dataset/60k_php_dataset_metrics.csv" -g chunk -ch 4
 ```
 
+Соединить файлы, из группы chunk в количестве 4 частей, в одну
+```shell
+node src/phpqa-test/app.js chunk -f "../dataset/60k_php_dataset_metrics.csv" -g chunk -ch 4
+```
+
 Обработать файл
 ```shell
 node src/phpqa-test/app.js run -f "../dataset/60k_php_dataset_metrics.csv"
@@ -50,6 +55,7 @@ node src/phpqa-test/app.js run -f "../dataset/60k_php_dataset_metrics.csv"
 Запуск с помощью nohup
 ```shell
 nohup node src/phpqa-test/app.js run -f "../dataset/60k_php_dataset_metrics.csv" > run.out 2>&1 &
+nohup node src/phpqa-test/app.js run -f "../dataset/60k_php_dataset_metrics-chunk-0.csv" -t phpmetrics > 60k_php_dataset_metrics-chunk-0.out 2>&1 &
 ```
 
 

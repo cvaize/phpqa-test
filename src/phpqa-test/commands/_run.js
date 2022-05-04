@@ -15,9 +15,10 @@ const getNotExistsResultToolsLite = require('../utils/get-not-exists-result-tool
  *   sizeLimit: 200000
  * }} args
  * @param {(ctx) => Promise} rowAction
+ * @param {(ctx) => Promise} rowsAction
  * @returns {Promise<void>}
  */
-async function command(name, args, rowAction) {
+async function command(name, args, rowAction, rowsAction = null) {
 
     /**
      * @type {{
@@ -52,12 +53,9 @@ async function command(name, args, rowAction) {
     console.log('Debug. Первая строка из списка:')
     console.log(sourceData[0])
 
-    endLog = timeLog('Создание основных директорий');
-    if (!await fs.exists(options.folders.folder)) await fs.mkdir(options.folders.folder);
-    if (!await fs.exists(options.folders.codeFolder)) await fs.mkdir(options.folders.codeFolder);
-    if (!await fs.exists(options.folders.analysesFolder)) await fs.mkdir(options.folders.analysesFolder);
-    endLog();
-
+    if (rowsAction) {
+        await rowsAction({options})
+    }
 
     endLog = timeLog('Сортировка данных по размеру, сначала самые маленькие');
     sourceData = sourceData.sort((a, b) => (a[options.args.columns.size] || 0) - (b[options.args.columns.size] || 0));
