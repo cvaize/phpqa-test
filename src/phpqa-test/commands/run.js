@@ -113,7 +113,7 @@ async function command(args) {
 ${phpqaConfigFilepath ? `-v "${phpqaConfigFilepath}":/config-phpqa/.phpqa.yml` : ''} \\
 zdenekdrahos/phpqa:v1.25.0-php7.2 phpqa --tools ${tools.join(',')} \\
 --ignoredDirs build,vendor,tests,uploads,phpMyAdmin,phpmyadmin ${phpqaConfigFilepath ? `--config /config-phpqa` : ''} \\
---analyzedDirs /app --buildDir /analysis`), 30000);
+--analyzedDirs /app --buildDir /analysis`), 600000); // 6min
 
         await fs.unlink(codeFolder)
 
