@@ -2,6 +2,7 @@ const fs = require('fs');
 const csvWriter = require('csv-write-stream')
 
 function writeData(filepath, data) {
+    console.log(filepath, data.length)
     return new Promise(function (resolve) {
         if (fs.existsSync(filepath)) {
             fs.unlinkSync(filepath);

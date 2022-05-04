@@ -6,6 +6,7 @@ const fs = require('../providers/fs');
 const getNotExistsResultToolsLite = require('../utils/get-not-exists-result-tools-lite');
 
 /**
+ * @param {string} name
  * @param {{
  *   filepath: '/home/cvaize/PhpstormProjects/datasince/dataset/60k_php_dataset_metrics.csv',
  *   tools: [ 'phpmetrics', 'phpmd', 'pdepend', 'phpcs', 'phpcpd', 'phploc' ],
@@ -16,7 +17,7 @@ const getNotExistsResultToolsLite = require('../utils/get-not-exists-result-tool
  * @param {(ctx) => Promise} rowAction
  * @returns {Promise<void>}
  */
-async function command(args, rowAction) {
+async function command(name, args, rowAction) {
 
     /**
      * @type {{
@@ -62,7 +63,7 @@ async function command(args, rowAction) {
     sourceData = sourceData.sort((a, b) => (a[options.args.columns.size] || 0) - (b[options.args.columns.size] || 0));
     endLog();
 
-    endLog = timeLog(`Обработка данных, ${sourceDataLength} строк`);
+    endLog = timeLog(`${name}, ${sourceDataLength} строк`);
     const info = {
         length: sourceDataLength,
         ignoreCount: {
@@ -120,12 +121,10 @@ async function command(args, rowAction) {
                  */
                 let notExistsTools = await getNotExistsResultToolsLite(analysesRepositoryFolder, options.args.tools);
 
-                if (notExistsTools.length === 0) {
-                    info.completed++;
-                } else {
+                if (notExistsTools.length !== 0) {
                     await rowAction({info, options, row, linkData, analysesRepositoryFolder, notExistsTools});
-                    info.completed++;
                 }
+                info.completed++;
             }
 
         } catch (e) {

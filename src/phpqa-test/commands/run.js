@@ -14,7 +14,7 @@ const copy = require('recursive-copy');
  * @returns {Promise<void>}
  */
 async function command(args) {
-    await commonRun(args, async function (ctx) {
+    await commonRun('Обработка данных', args, async function (ctx) {
         /**
          * @var {{
          *   "info": {

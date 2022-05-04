@@ -43,7 +43,7 @@ node src/phpqa-test/write-analysis-to-dataset.js -f "./dataset/60k_php_dataset_m
 ```
 
 ```shell
-node src/phpqa-test/app.js chunk -f "./dataset/60k_php_dataset_metrics.csv" -g chunk -ch 4  -t phpmetrics
+node src/phpqa-test/app.js chunk -f "../dataset/60k_php_dataset_metrics.csv" -g chunk -ch 4
 ```
 
 ```shell

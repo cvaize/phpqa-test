@@ -1,5 +1,4 @@
 const fs = require('fs');
-const ArgParser = require("argparce");
 const path = require("path");
 const config = require('../config/app');
 
@@ -38,7 +37,7 @@ const argsSettings = {
  *   sizeLimit: 200000
  * }}
  */
-function getArgs(argv) {
+function getArgs(argv, ArgParser) {
 
     const params = ArgParser.parse(argv, argsSettings);
 

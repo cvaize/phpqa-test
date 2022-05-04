@@ -5,6 +5,7 @@
 // const getExistsResultTools = require('./utils/get-exists-result-tools');
 const timeLog = require('./utils/time-log').timeLog;
 const endAllLogs = require('./utils/time-log').endAllLogs;
+const ArgParser = require("argparce");
 // const checkFileExists = require('./utils/check-file-exists');
 // const writeData = require('./utils/write-data');
 // const getArgs = require('./utils/get-args');
@@ -432,7 +433,7 @@ try {
     throw new Error('Команда ' + command + ' не предусмотрена.')
 }
 
-const argv = getArgs(process.argv.slice(3));
+const argv = getArgs(process.argv.slice(3), ArgParser);
 
 action(argv).then(() => {
     endLog();
