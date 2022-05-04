@@ -13,14 +13,15 @@ const { Sema } = require('async-sema');
  *   tools: [ 'phpmetrics', 'phpmd', 'pdepend', 'phpcs', 'phpcpd', 'phploc' ],
  *   columns: { link: 'link', size: 'diskUsage (kb)' },
  *   phpqaConfigFilepath: '/home/cvaize/PhpstormProjects/datasince/commands/src/phpqa-test/.phpqa.yml',
- *   sizeLimit: 200000
+ *   sizeLimit: 200000,
+ *   sema: 4,
  * }} args
  * @param {(ctx) => Promise} rowAction
  * @returns {Promise<void>}
  */
 async function command(name, args, rowAction) {
     const s = new Sema(
-        10, // Allow 4 concurrent async calls
+        args.sema, // Allow 4 concurrent async calls
         {
             capacity: 100 // Prealloc space for 100 tokens
         }
