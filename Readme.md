@@ -22,37 +22,34 @@ marcelog/Ci-Php-Phing-Example,https://github.com/marcelog/Ci-Php-Phing-Example,2
 
 ## Генерация аналитики через nodejs
 
-В этом пункте установите nodejs, желательно 18 версию (чисто чтобы обрабатывало быстрее)
+Посчитать метрики phpmetrics
 ```shell
-node src/phpqa-test/app.js run-parallel -f "./dataset/60k_php_dataset_metrics.csv" -fc "./src/phpqa-test/.phpqa.yml" -t phpmetrics,phpmd,pdepend,phpcs,phpcpd,phploc
-```
-```shell
-node src/phpqa-test/app.js run-parallel -f "./dataset/60k_php_dataset_metrics-chunk-0.csv" -fc "./src/phpqa-test/.phpqa.yml" -t phpmetrics
+node src/phpqa-test/count-dataset-analysis.js -f "../dataset/60k_php_dataset_metrics.csv"
 ```
 
+Очистить директории от брака
 ```shell
-node src/phpqa-test/count-dataset-analysis.js -f "./dataset/60k_php_dataset_metrics.csv"
+node src/phpqa-test/clear-dataset-analysis.js -f "../dataset/60k_php_dataset_metrics.csv"
 ```
 
+Записать результаты в файл csv
 ```shell
-node src/phpqa-test/clear-dataset-analysis.js -f "./dataset/60k_php_dataset_metrics.csv"
+node src/phpqa-test/write-analysis-to-dataset.js -f "../dataset/60k_php_dataset_metrics.csv"
 ```
 
-```shell
-node src/phpqa-test/write-analysis-to-dataset.js -f "./dataset/60k_php_dataset_metrics.csv"
-```
-
+Разбить файл для обработки на 4 части в группу chunk
 ```shell
 node src/phpqa-test/app.js chunk -f "../dataset/60k_php_dataset_metrics.csv" -g chunk -ch 4
 ```
 
+Обработать файл
 ```shell
 node src/phpqa-test/app.js run -f "../dataset/60k_php_dataset_metrics.csv"
 ```
 
 Запуск с помощью nohup
 ```shell
-nohup node src/phpqa-test/run-parallel.js -f "./dataset/60k_php_dataset_metrics.csv" -t phpmetrics,phpmd,pdepend,phpcs,phpcpd,phploc > run_parallel.out 2>&1 &
+nohup node src/phpqa-test/app.js run -f "../dataset/60k_php_dataset_metrics.csv" > run.out 2>&1 &
 ```
 
 
