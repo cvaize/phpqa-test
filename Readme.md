@@ -44,13 +44,15 @@ node src/phpqa-test/app.js chunk -f "../dataset/60k_php_dataset_metrics.csv" -g 
 
 Обработать файл
 ```shell
-node src/phpqa-test/app.js run -f "../dataset/60k_php_dataset_metrics.csv" -t phpmetrics
+node src/phpqa-test/app.js run -f "../dataset/60k_php_dataset_metrics.csv"
 ```
 
 Запуск с помощью nohup
 ```shell
 nohup node src/phpqa-test/app.js run -f "../dataset/60k_php_dataset_metrics.csv" > run.out 2>&1 &
 ```
+
+
 
 
 
