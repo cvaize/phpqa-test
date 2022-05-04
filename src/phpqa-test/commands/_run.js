@@ -4,6 +4,7 @@ const getFolders = require('../utils/get-folders');
 const getGitUserRepositoryFromLink = require('../utils/get-git-user-repository-from-link');
 const fs = require('../providers/fs');
 const getNotExistsResultToolsLite = require('../utils/get-not-exists-result-tools-lite');
+const { Sema } = require('async-sema');
 
 /**
  * @param {string} name
@@ -18,7 +19,12 @@ const getNotExistsResultToolsLite = require('../utils/get-not-exists-result-tool
  * @returns {Promise<void>}
  */
 async function command(name, args, rowAction) {
-
+    const s = new Sema(
+        10, // Allow 4 concurrent async calls
+        {
+            capacity: 100 // Prealloc space for 100 tokens
+        }
+    );
     /**
      * @type {{
      *   args: {
@@ -72,6 +78,9 @@ async function command(name, args, rowAction) {
         },
         completed: 0,
     }
+
+    const promises = [];
+
     for (let i = 0; i < sourceDataLength; i++) {
         const row = sourceData[i];
         const link = row[options.args.columns.link]
@@ -122,18 +131,39 @@ async function command(name, args, rowAction) {
                 let notExistsTools = await getNotExistsResultToolsLite(analysesRepositoryFolder, options.args.tools);
 
                 if (notExistsTools.length !== 0) {
-                    await rowAction({info, options, row, linkData, analysesRepositoryFolder, notExistsTools});
+                    promises.push(new Promise(async (resolve) => {
+                        await s.acquire()
+                        try {
+                            console.log(s.nrWaiting() + ' вызовов в очереди')
+
+                            await rowAction({info, options, row, linkData, analysesRepositoryFolder, notExistsTools}).then(() => {
+                                info.completed++;
+                                endLog();
+                            }).catch((e) => {
+                                console.error(e);
+                                info.ignoreCount.error++;
+                                endLog();
+                            })
+
+                        } finally {
+                            s.release();
+                            resolve();
+                        }
+                    }));
+                }else{
+                    info.completed++;
+                    endLog();
                 }
-                info.completed++;
             }
 
         } catch (e) {
             console.error(e);
             info.ignoreCount.error++;
+            endLog();
         }
-
-        endLog();
     }
+
+    await Promise.allSettled(promises);
 
     if (await fs.exists(options.folders.codeFolder)) await fs.unlink(options.folders.codeFolder);
 

@@ -24,6 +24,9 @@ const argsSettings = {
         { // Лимит в kb
             type: 'uinteger', name: 'size-limit', short: 'l', default: 200000
         },
+        { // Лимит в kb
+            type: 'uinteger', name: 'sema', short: 's', default: 4
+        },
     ], maxStrays: 0, stopAtError: true, errorExitCode: true
 };
 
@@ -97,7 +100,16 @@ function getArgs(argv, ArgParser) {
         throw new Error('Укажите ограничение по размеру.')
     }
 
-    return {filepath, tools, columns, phpqaConfigFilepath, sizeLimit};
+    // 6
+    let sema = params.args['sema'];
+
+    sema = Number(sema || 0)
+
+    if (!sema || Number.isNaN(sema)) {
+        throw new Error('Количество параллельных вызовов не должно быть равно 0.')
+    }
+
+    return {filepath, tools, columns, phpqaConfigFilepath, sizeLimit, sema};
 }
 
 module.exports = getArgs;
