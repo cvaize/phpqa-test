@@ -16,7 +16,7 @@ function writeData(filepath, data) {
         }
         writer.end()
 
-        resolve();
+        setTimeout(resolve, 100)
     })
 }
 

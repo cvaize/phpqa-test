@@ -1,5 +1,4 @@
 const fs = require('../providers/fs');
-const childProcess = require('../providers/child-process');
 const commonRun = require('./_run');
 const copy = require('recursive-copy');
 const writeData = require('../utils/write-data');
@@ -162,7 +161,9 @@ async function command(args) {
 
     for (const chunksSourcesKey in chunksSources) {
         const chunksSource = chunksSources[chunksSourcesKey];
-        await writeData(chunksSource.folders.filepath, chunksSource.rows);
+        if(chunksSource.rows.length){
+            await writeData(chunksSource.folders.filepath, chunksSource.rows);
+        }
     }
 }
 
