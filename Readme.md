@@ -1,21 +1,14 @@
 # Проект проверки качества php кода инструментом phpqa
 Использует: https://github.com/EdgedesignCZ/phpqa
 
-Внимание! В IDE открывайте директорию src, и все скрипты распологайте в ней. 
-Данные распологайте в директории dataset.
-Это необходимо чтобы IDE не тормозила.
-
 ## Установка зависимостей
 1) Установите docker;
 2) Установите git;
-3) Используйте команду для установки node.js пакетов.
-```shell
-docker run --user $(id -u):$(id -g) -it --rm -v "$PWD":/usr/src/app -w /usr/src/app node npm i
-```
+3) Установите node.js;
 
 ## Использование
 ### Работа с датасетом
-#### Поместите датасет csv в файл`./dataset/60k_php_dataset_metrics.csv`
+#### Поместите датасет csv в файл`../dataset/60k_php_dataset_metrics.csv`
 ```csv
 nameWithOwner,link,createdAt,pushedAt,isFork,diskUsage (kb),D. Orlov score,D. Orlov - Why did I lower the score.,Maintainability,Accessibility for new developers,Simplicity of algorithms,Volume,Reducing bug's probability,Average Total
 iamfiscus/codeigniter-ion-auth-migration,https://github.com/iamfiscus/codeigniter-ion-auth-migration,2011-07-28T14:51:30Z,2018-10-04T08:07:24Z,FALSE,136,7.5,,17.170000000000002,0,14.289999999999999,9.3800000000000008,0,8.1699999999999999
@@ -50,10 +43,30 @@ node src/phpqa-test/write-analysis-to-dataset.js -f "./dataset/60k_php_dataset_m
 ```
 
 ```shell
-node src/phpqa-test/app.js chunking -f "./dataset/60k_php_dataset_metrics.csv" -g chunk -ch 4  -t phpmetrics
+node src/phpqa-test/app.js chunk -f "./dataset/60k_php_dataset_metrics.csv" -g chunk -ch 4  -t phpmetrics
+```
+
+```shell
+node src/phpqa-test/app.js run -f "../dataset/60k_php_dataset_metrics.csv"
 ```
 
 Запуск с помощью nohup
 ```shell
 nohup node src/phpqa-test/run-parallel.js -f "./dataset/60k_php_dataset_metrics.csv" -t phpmetrics,phpmd,pdepend,phpcs,phpcpd,phploc > run_parallel.out 2>&1 &
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

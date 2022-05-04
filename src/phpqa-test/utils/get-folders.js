@@ -1,8 +1,8 @@
 const path = require("path");
 
 /**
- *
- * @param {string} sourceFilepath
+ * @param sourceFilepath
+ * @returns {{basename: string, filename: string, folder: string, filepath: string, codeFolder: string, analysesFolder: string, extname: string}}
  */
 function getFolders(sourceFilepath) {
     let filepath = path.resolve(sourceFilepath);

@@ -1,9 +1,3 @@
-const COMMAND = {
-    RUN: 'run',
-    CHUNK: 'chunk',
-    JOIN: 'join',
-}
-
 const PHPQA = {
     TOOLS: {
         PHPMETRICS: 'phpmetrics',
@@ -16,7 +10,6 @@ const PHPQA = {
 }
 
 const vars = {
-    COMMAND,
     PHPQA,
 }
 

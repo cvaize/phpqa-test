@@ -88,22 +88,22 @@ const clean = async function (rowObject) {
 
             let folder = `${analysesFolder}/${repFolder}/${repName}`;
 
-            let phpmetricsHtmlFilepath = `${folder}/phpmetrics.html`;
-            let phpmetricsXmlFilepath = `${folder}/phpmetrics.xml`;
-
             removeSource(`${folder}-clone`);
             removeSource(`${folder}/${repName}-clone`);
 
-            if (fs.existsSync(phpmetricsHtmlFilepath)) {
-                let phpmetrics = fs.readFileSync(phpmetricsHtmlFilepath, 'utf-8');
+            if (fs.existsSync(`${folder}/phpmetrics.html`)) {
+                let phpmetrics = fs.readFileSync(`${folder}/phpmetrics.html`, 'utf-8');
 
                 let root = HTMLParser.parse(phpmetrics);
                 let rows = root.querySelectorAll('#score table tbody tr');
 
                 if (!rows || !rows.length) {
-                    removeSource(phpmetricsHtmlFilepath);
-                    removeSource(phpmetricsXmlFilepath);
+                    removeSource(`${folder}/phpmetrics.html`);
                 }
+            }
+
+            if (!await isIncludesContentInSource(`${folder}/phpmetrics.xml`, phraseXml)) {
+                removeSource(`${folder}/phpmetrics.xml`);
             }
 
             if (!await isIncludesContentInSource(`${folder}/checkstyle.xml`, phraseXml)) {

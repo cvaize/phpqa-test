@@ -36,51 +36,23 @@ const argsSettings = {
     },], maxStrays: 0, stopAtError: true, errorExitCode: true
 };
 
-const commandsArgs = {
-    run(params) {
-        let filepath = path.resolve(params.args.filepath);
-
-        if (!params.filepath) {
-            throw new Error('Укажите путь к файлу csv, который нужно обработать.');
-        }
-
-        if (!fs.readFileSync(params.filepath)) {
-            throw new Error(`Файл не найден по пути: ${params.filepath}.`);
-        }
-
-        return {filepath};
-    },
-    chunk(params) {
-        let filepath = path.resolve(params.args.filepath);
-
-        if (!params.filepath) {
-            throw new Error('Укажите путь к файлу csv, который нужно разбить на части.');
-        }
-
-        if (!fs.readFileSync(params.filepath)) {
-            throw new Error(`Файл не найден по пути: ${params.filepath}.`);
-        }
-
-        return {filepath};
-    },
-}
-
 /**
- *
- * @param {string} command
- * @returns {{
- *   filepath: '/home/cvaize/PhpstormProjects/commands/dataset/60k_php_dataset_metrics.csv',
- *   group: 'chunk',
- *   chunksCount: 4,
- *   columnSizeKey: 'diskUsage (kb)',
- *   sizeLimit: 200000,
- *   phpqaConfigFilepath: '/home/cvaize/PhpstormProjects/commands/src/phpqa-test/.phpqa.yml'
- * }}
+ * @param {string} argv
+ * @returns {{filepath: string}}
  */
-function getArgs(command) {
+function getArgs(argv) {
 
-    const params = ArgParser.parse(process.argv.slice(3), argsSettings);
+    const params = ArgParser.parse(argv, argsSettings);
 
+    let filepath = path.resolve(params.args.filepath);
+
+    if (!filepath) {
+        throw new Error('Укажите путь к файлу csv, который нужно обработать.');
+    }
+
+    if (!fs.readFileSync(filepath)) {
+        throw new Error(`Файл не найден по пути: ${filepath}.`);
+    }
 
     // let group = params.args.group;
     // let chunksCount = params.args.chunks;
@@ -126,7 +98,7 @@ function getArgs(command) {
     //     throw new Error('Укажите количество частей.')
     // }
 
-    return commandsArgs[command](params);
+    return {filepath};
 }
 
 module.exports = getArgs;

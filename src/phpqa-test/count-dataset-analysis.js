@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const ArgParser = require("argparce");
 const getData = require('./utils/get-data');
-const getExistsResultTools = require('./utils/get-exists-result-tools');
+const getExistsResultToolsLite = require('./utils/get-exists-result-tools-lite');
 const isIgnore = require('./utils/is-ignore');
 
 let counts = {
@@ -106,7 +106,7 @@ const counter = async function (rowObject) {
             ignore = false;
             let folder = `${analysesFolder}/${repFolder}/${repName}`;
 
-            let existsResultTools = await getExistsResultTools(folder);
+            let existsResultTools = await getExistsResultToolsLite(folder);
 
             for (let i = 0; i < existsResultTools.length; i++) {
                 let existsResultTool = existsResultTools[i];

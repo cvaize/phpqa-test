@@ -1,16 +1,17 @@
-const fs = require('fs');
-const ArgParser = require("argparce");
-const getData = require('./utils/get-data');
-const execShellCommand = require('./utils/exec');
-const getExistsResultTools = require('./utils/get-exists-result-tools');
-const timeLog = require('./utils/time-log');
-const checkFileExists = require('./utils/check-file-exists');
-const writeData = require('./utils/write-data');
-const getArgs = require('./utils/get-args');
-const getCommand = require('./utils/get-command');
-const {Sema} = require('async-sema');
-const copy = require('recursive-copy');
-const _ = require('lodash')
+// const fs = require('fs');
+// const ArgParser = require("argparce");
+// const getData = require('./utils/get-data');
+// const execShellCommand = require('./utils/exec');
+// const getExistsResultTools = require('./utils/get-exists-result-tools');
+const timeLog = require('./utils/time-log').timeLog;
+const endAllLogs = require('./utils/time-log').endAllLogs;
+// const checkFileExists = require('./utils/check-file-exists');
+// const writeData = require('./utils/write-data');
+// const getArgs = require('./utils/get-args');
+// const getCommand = require('./utils/get-command');
+// const {Sema} = require('async-sema');
+// const copy = require('recursive-copy');
+// const _ = require('lodash')
 
 // const COMMAND = {
 //     RUN: 'run',
@@ -397,24 +398,43 @@ const _ = require('lodash')
 //
 // main();
 
-const command = getCommand();
-const args = getArgs(command);
+process.stdin.resume();//so the program will not close instantly
 
-require(`./commands/${command}.js`)(args)
+const command = process.argv[2];
 
+const endLog = timeLog(`Выполнение команды ${command}`)
 
+function exitHandler(options, exitCode) {
+    if (options.cleanup) endAllLogs();
+    // if (exitCode || exitCode === 0) console.log(exitCode);
+    if (options.exit) process.exit();
+}
 
+//do something when app is closing
+process.on('exit', exitHandler.bind(null,{cleanup:true, exit:true}));
 
+//catches ctrl+c event
+process.on('SIGINT', exitHandler.bind(null, {exit:true}));
 
+// catches "kill pid" (for example: nodemon restart)
+process.on('SIGUSR1', exitHandler.bind(null, {exit:true}));
+process.on('SIGUSR2', exitHandler.bind(null, {exit:true}));
 
+//catches uncaught exceptions
+process.on('uncaughtException', exitHandler.bind(null, {exit:true}));
 
+let action;
+let getArgs;
+try {
+    action = require(`./commands/${command}.js`)
+    getArgs = require(`./args/${command}.js`)
+} catch (e) {
+    throw new Error('Команда ' + command + ' не предусмотрена.')
+}
 
+const argv = getArgs(process.argv.slice(3));
 
-
-
-
-
-
-
-
-
+action(argv).then(() => {
+    endLog();
+    process.exit();
+})
