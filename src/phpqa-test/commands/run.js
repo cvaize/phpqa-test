@@ -2,6 +2,7 @@ const fs = require('../providers/fs');
 const childProcess = require('../providers/child-process');
 const commonRun = require('./_run');
 const copy = require('recursive-copy');
+const withRejectTimeout = require('../utils/with-reject-timeout');
 
 /**
  * @param {{
@@ -104,15 +105,15 @@ async function command(args) {
             await fs.mkdir(analysesRepositoryFolder);
         }
 
-        await childProcess.exec(`git clone git@github.com:${user}/${repository}.git ${codeFolder}`);
+        await withRejectTimeout(childProcess.exec(`git clone git@github.com:${user}/${repository}.git ${codeFolder}`), 300000); // 5min
 
         // await execShellCommand(`find ${repCodeFolder} -type d -iname "*test*" -prune -exec rm -rf {} \\;`);
         // await execShellCommand(`find ${repCodeFolder} -iname "*test*.*" -exec rm -rf {} \\;`);
-        await childProcess.exec(`docker run --user $(id -u):$(id -g) --rm -v "${codeFolder}":/app -v  "${analysesRepositoryFolder}":/analysis \\
+        await withRejectTimeout(childProcess.exec(`docker run --user $(id -u):$(id -g) --rm -v "${codeFolder}":/app -v  "${analysesRepositoryFolder}":/analysis \\
 ${phpqaConfigFilepath ? `-v "${phpqaConfigFilepath}":/config-phpqa/.phpqa.yml` : ''} \\
 zdenekdrahos/phpqa:v1.25.0-php7.2 phpqa --tools ${tools.join(',')} \\
 --ignoredDirs build,vendor,tests,uploads,phpMyAdmin,phpmyadmin ${phpqaConfigFilepath ? `--config /config-phpqa` : ''} \\
---analyzedDirs /app --buildDir /analysis`);
+--analyzedDirs /app --buildDir /analysis`), 30000);
 
         await fs.unlink(codeFolder)
 
