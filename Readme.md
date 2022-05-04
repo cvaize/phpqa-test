@@ -4,14 +4,11 @@
 ## Установка зависимостей
 1) Установите docker;
 2) Установите git;
-3) Используйте команду для установки node.js пакетов.
-```shell
-docker run --user $(id -u):$(id -g) -it --rm -v "$PWD":/usr/src/app -w /usr/src/app node npm i
-```
+3) Установите node.js;
 
 ## Использование
 ### Работа с датасетом
-#### Поместите датасет csv в файл`./dataset/60k_php_dataset_metrics.csv`
+#### Поместите датасет csv в файл`../dataset/60k_php_dataset_metrics.csv`
 ```csv
 nameWithOwner,link,createdAt,pushedAt,isFork,diskUsage (kb),D. Orlov score,D. Orlov - Why did I lower the score.,Maintainability,Accessibility for new developers,Simplicity of algorithms,Volume,Reducing bug's probability,Average Total
 iamfiscus/codeigniter-ion-auth-migration,https://github.com/iamfiscus/codeigniter-ion-auth-migration,2011-07-28T14:51:30Z,2018-10-04T08:07:24Z,FALSE,136,7.5,,17.170000000000002,0,14.289999999999999,9.3800000000000008,0,8.1699999999999999
@@ -22,37 +19,51 @@ rafu1987/t3bootstrap-project,https://github.com/rafu1987/t3bootstrap-project,201
 ZAP-Quebec/AuthPuppy,https://github.com/ZAP-Quebec/AuthPuppy,2013-01-18T01:23:14Z,2013-01-18T01:29:56Z,FALSE,4756,7,,97.290000000000006,49.759999999999998,50.289999999999999,100,93.439999999999998,78.159999999999997
 marcelog/Ci-Php-Phing-Example,https://github.com/marcelog/Ci-Php-Phing-Example,2012-04-20T18:13:10Z,2012-04-21T14:13:38Z,FALSE,141,9,,86.599999999999994,50,100,100,100,87.319999999999993
 ```
-#### Генерация аналитики
+
+## Генерация аналитики через nodejs
+
+Посчитать метрики phpmetrics
 ```shell
-bash run_dataset.sh
+node src/phpqa-test/count-dataset-analysis.js -f "../dataset/60k_php_dataset_metrics.csv"
 ```
-Аналитика будет помещаться в директорию `dataset/analysis`.
-#### Очистка файлов аналитики от ошибочных результатов
+
+Очистить директории от брака
 ```shell
-docker run --user $(id -u):$(id -g) -it --rm -v "$PWD":/usr/src/app -w /usr/src/app node node clear-dataset-analysis.js
+node src/phpqa-test/clear-dataset-analysis.js -f "../dataset/60k_php_dataset_metrics.csv"
 ```
-#### Записать баллы из аналитики в файл csv датасет `60k_php_dataset_metrics.csv`.
+
+Записать результаты в файл csv
 ```shell
-docker run --user $(id -u):$(id -g) -it --rm -v "$PWD":/usr/src/app -w /usr/src/app node node write-analysis-to-dataset.js
+node src/phpqa-test/write-analysis-to-dataset.js -f "../dataset/60k_php_dataset_metrics.csv"
+```
+
+Разбить файл для обработки на 4 части в группу chunk
+```shell
+node src/phpqa-test/app.js chunk -f "../dataset/60k_php_dataset_metrics.csv" -g chunk -ch 4
+```
+
+Обработать файл
+```shell
+node src/phpqa-test/app.js run -f "../dataset/60k_php_dataset_metrics.csv"
+```
+
+Запуск с помощью nohup
+```shell
+nohup node src/phpqa-test/app.js run -f "../dataset/60k_php_dataset_metrics.csv" > run.out 2>&1 &
 ```
 
 
-### Другие команды
-#### Запуск статичного скрипта
-Просто меняйте репозиторий в скрипте и выполнаяйте команду:
-```shell
-bash run.sh
-```
-#### Запуск скрипта с переменными
-В нем вы можете в командной строке указать URL репозитория github.
-```shell
-export GIT_URL=https://github.com/sabitertan/webpos && bash run_with_env.sh
-```
-#### Запустить в фоне на сервере
-```shell
-nohup /bin/bash /root/myapp/run_dataset_semaphore.sh </dev/null &>/dev/null &
-```
-#### Посчитать результат оценки датасета
-```shell
-docker run --user $(id -u):$(id -g) -it --rm -v "$PWD":/usr/src/app -w /usr/src/app node node count-dataset-analysis.js
-```
+
+
+
+
+
+
+
+
+
+
+
+
+
+

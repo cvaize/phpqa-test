@@ -1,14 +1,14 @@
 {
-  "name": "myapp",
-  "version": "0.0.0",
-  "private": true,
-  "scripts": {},
   "dependencies": {
+    "argparce": "^1.0.0",
+    "async-sema": "^3.1.1",
     "csv-parser": "^3.0.0",
     "csv-write-stream": "^2.0.0",
+    "lodash": "^4.17.21",
     "node-html-parser": "^5.3.3",
     "node-xlsx": "^0.21.0",
     "pdf-parse": "^1.1.1",
+    "recursive-copy": "^2.0.14",
     "rimraf": "^3.0.2"
   }
 }
