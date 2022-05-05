@@ -64,7 +64,7 @@ filename.pop()
 filename = filename.join('.');
 let analysesFolder = filename + '/analyses';
 
-const phraseXml = '<?xml'
+const phraseXml = '<'
 
 const removeSource = function (filepath) {
     if (fs.existsSync(filepath)) {

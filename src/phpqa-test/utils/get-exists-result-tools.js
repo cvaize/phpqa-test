@@ -3,7 +3,7 @@ const HTMLParser = require('node-html-parser');
 const isIncludesContentInSource = require('./is-includes-contentIn-source');
 const checkFileExists = require('./check-file-exists');
 
-const phraseXml = '<?xml'
+const phraseXml = '<'
 
 /**
  * @param {string} folder
