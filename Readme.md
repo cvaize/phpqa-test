@@ -44,7 +44,7 @@ node src/phpqa-test/app.js chunk -f "../dataset/60k_php_dataset_metrics.csv" -g 
 
 Соединить файлы, из группы chunk в количестве 4 частей, в одну
 ```shell
-node src/phpqa-test/app.js chunk -f "../dataset/60k_php_dataset_metrics.csv" -g chunk -ch 4
+node src/phpqa-test/app.js join -f "../dataset/60k_php_dataset_metrics.csv" -g chunk -ch 4
 ```
 
 Обработать файл
